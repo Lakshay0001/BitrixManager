@@ -1,7 +1,7 @@
 # backend/update.py
 from fastapi import APIRouter, Query, HTTPException
 from typing import Dict, Any
-from bitrix_wrapper import BitrixWrapper
+from .bitrix_wrapper import BitrixWrapper
 
 router = APIRouter()
 

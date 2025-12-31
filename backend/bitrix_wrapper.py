@@ -1,7 +1,7 @@
 import requests, time
 from typing import Dict, Any, List, Tuple, Optional
 import pandas as pd
-from users import UserResolver
+from .users import UserResolver
 
 
 def ensure_slash(u: str) -> str:

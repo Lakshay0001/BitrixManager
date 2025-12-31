@@ -16,13 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import routers
-from get import router as get_router
-from list import router as list_router
-from fields import router as fields_router
-from update import router as update_router
-from delete import router as delete_router
-from template import router as template_router
+# Import routers (package-relative imports)
+from .get import router as get_router
+from .list import router as list_router
+from .fields import router as fields_router
+from .update import router as update_router
+from .delete import router as delete_router
+from .template import router as template_router
 
 # Include routers
 app.include_router(get_router)

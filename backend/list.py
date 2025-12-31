@@ -2,8 +2,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
 from collections import defaultdict
-from bitrix_wrapper import BitrixWrapper
-from helpers import fix_date, FLATTENED_FIELDS
+from .bitrix_wrapper import BitrixWrapper
+from .helpers import fix_date, FLATTENED_FIELDS
 
 router = APIRouter()
 

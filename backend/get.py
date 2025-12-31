@@ -1,8 +1,8 @@
 # backend/get.py
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from typing import Any, Dict, List
-from bitrix_wrapper import BitrixWrapper
-from helpers import flatten_record_helper
+from .bitrix_wrapper import BitrixWrapper
+from .helpers import flatten_record_helper
 import pandas as pd
 import io
 

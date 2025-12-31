@@ -16,6 +16,13 @@ venv/
 *.env
 *.log
 
+# Local docs / temporary files to ignore
+backend/README.md
+README.md
+feature.txt
+~$Live.docx
+VISUAL.docx
+Live.docx
 # Markdown files (keep locally only)
 *.md
 README.md

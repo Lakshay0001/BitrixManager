@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Query
 from typing import List
 from pydantic import BaseModel
-from bitrix_wrapper import BitrixWrapper
+from .bitrix_wrapper import BitrixWrapper
 
 router = APIRouter()
 

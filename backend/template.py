@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 import io
-from bitrix_wrapper import BitrixWrapper
+from .bitrix_wrapper import BitrixWrapper
 
 router = APIRouter()
 

@@ -1,8 +1,8 @@
 # backend/fields.py
 from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any
-from bitrix_wrapper import BitrixWrapper
-from helpers import FLATTENED_FIELDS
+from .bitrix_wrapper import BitrixWrapper
+from .helpers import FLATTENED_FIELDS
 
 router = APIRouter()
 
