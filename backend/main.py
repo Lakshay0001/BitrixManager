@@ -32,6 +32,12 @@ app.include_router(update_router)
 app.include_router(delete_router)
 app.include_router(template_router)
 
+# Health check endpoint
+@app.get("/health")
+def health():
+    """Health check endpoint for readiness probes."""
+    return {"status": "ok"}
+
 # ---------------------- ENDPOINTS (Legacy - now in individual modules) -------------------------------
 # All endpoints have been moved to modular files:
 # - get.py: GET endpoints for retrieving items
