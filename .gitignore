@@ -1,0 +1,23 @@
+
+# Node.js (Frontend)
+node_modules/
+.next/
+.env.local
+.env.*
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Python (Backend)
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.env
+*.log
+
+# Markdown files (keep locally only)
+*.md
+README.md
+NOTES.md
+
