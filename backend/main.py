@@ -38,6 +38,10 @@ def health():
     """Health check endpoint for readiness probes."""
     return {"status": "ok"}
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 # ---------------------- ENDPOINTS (Legacy - now in individual modules) -------------------------------
 # All endpoints have been moved to modular files:
 # - get.py: GET endpoints for retrieving items
