@@ -4,7 +4,8 @@ import { WebhookContext } from "../context/WebhookContext";
 import ExpandableCard from "../components/ExpandableCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
-import { buildUrl } from "../lib/api";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+
 
 // Utility: format Date → YYYY-MM-DD
 const formatDate = (date) => {
@@ -78,7 +79,7 @@ export default function ListPage() {
     setAllFields([]);
     setSelectedFields([]);
 
-    fetch(buildUrl(`/api/v1/fields/${entity}`, { base }))
+    fetch(apiBuildUrl(`/fields/${entity}`, { base }))
       .then(r => r.json())
       .then(j => {
         const opts = (j.code_to_label ? Object.entries(j.code_to_label).map(([code, label]) => ({ code, label })) : []);
@@ -112,7 +113,7 @@ export default function ListPage() {
     if (fromDate) params.from_created = fromDate;
     if (toDate) params.to_created = toDate;
 
-    const url = buildUrl(`/api/v1/list/${entity}`, params);
+    const url = apiBuildUrl(`/fields/${entity}`, { base });
 
     try {
       setLoadingMessage("Fetching data...");

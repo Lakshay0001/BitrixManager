@@ -2,6 +2,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Dict
 from collections import defaultdict
+
+from pydantic import BaseModel
 from .bitrix_wrapper import BitrixWrapper
 from .helpers import FLATTENED_FIELDS
 
@@ -130,3 +132,29 @@ def get_duplicates(entity: str, base: str = Query(...)):
     ]
 
     return {"success": True, "result": duplicates, "total": len(duplicates)}
+
+class DeleteFieldsRequest(BaseModel):
+    base: str
+    ids: list[str]
+    entity: str  # 'lead' or 'deal'
+
+@router.post("/fields/delete")
+def delete_fields(req: DeleteFieldsRequest):
+    """
+    Delete custom fields (userfields) from a Bitrix entity like lead or deal.
+    Request body: { "base": "...", "ids": ["15864"], "entity": "lead" }
+    """
+    bx = BitrixWrapper(req.base)
+    failed = []
+
+    for field_id in req.ids:
+        # Call the correct userfield.delete method
+        resp = bx._call(f"crm.{req.entity}.userfield.delete", {"id": field_id}, "post")
+        if not resp[0] or not resp[1].get("result"):
+            error_msg = resp[1].get("error_description", "Item was not found")
+            failed.append(f"{field_id}: {error_msg}")
+
+    if failed:
+        return {"success": False, "message": "Failed to delete: " + ", ".join(failed)}
+
+    return {"success": True, "message": f"Deleted {len(req.ids)} field(s) successfully"}

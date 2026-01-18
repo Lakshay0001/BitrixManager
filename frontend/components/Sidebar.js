@@ -17,6 +17,7 @@ export default function Sidebar() {
     { name: "Delete", href: "/delete" },
     { name: "List, Get & Update", href: "/list-get-update" },
     { name: "Fields", href: "/fields" },
+    { name: "Users", href: "/users" },
     // { name: "Settings", href: "/settings" },
   ];
 

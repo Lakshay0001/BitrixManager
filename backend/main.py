@@ -39,6 +39,7 @@ from backend.fields import router as fields_router
 from backend.update import router as update_router
 from backend.delete import router as delete_router
 from backend.template import router as template_router
+from backend.users import router as users_router
 
 # --------------------------------------------------
 # INCLUDE ROUTERS
@@ -49,6 +50,7 @@ app.include_router(fields_router, prefix=API_PREFIX, tags=["Fields"])
 app.include_router(update_router, prefix=API_PREFIX, tags=["Update"])
 app.include_router(delete_router, prefix=API_PREFIX, tags=["Delete"])
 app.include_router(template_router, prefix=API_PREFIX, tags=["Template"])
+app.include_router(users_router, prefix=API_PREFIX, tags=["Users"])
 
 # --------------------------------------------------
 # SYSTEM / HEALTH ENDPOINTS

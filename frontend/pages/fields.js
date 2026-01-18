@@ -1,6 +1,8 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+
 
 export default function FieldsPage() {
     const { webhook } = useContext(WebhookContext);
@@ -40,10 +42,11 @@ export default function FieldsPage() {
         setDuplicates([]);
 
         try {
-            const res = await fetch(
-                `http://127.0.0.1:8000/fields/${entity}?base=${encodeURIComponent(base)}`
-            );
-            const data = await res.json();
+            const url = apiBuildUrl(`/fields/${entity}`, { base });
+            const res = await fetch(url);
+            const json = await res.json();
+
+            const data = json.result || {};
 
             let rows = [];
 
@@ -105,26 +108,12 @@ export default function FieldsPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(
-                `http://127.0.0.1:8000/fields/${entity}/duplicates?base=${encodeURIComponent(base)}`
-            );
-            const data = await res.json();
+            const url = apiBuildUrl(`/fields/${entity}/duplicates`, { base });
+            const res = await fetch(url);
+            const json = await res.json();
+            const data = json.result || [];
 
-            let dups = [];
-
-            Object.keys(data.duplicates || {}).forEach((label) => {
-                data.duplicates[label].forEach((f) => {
-                    dups.push({
-                        label,
-                        code: f.code,
-                        type: f.type,
-                        id: f.id || "",
-                        list: f.list || []
-                    });
-                });
-            });
-
-            setDuplicates(dups);
+            setDuplicates(data);
         } catch (err) {
             console.error(err);
             alert("Could not get duplicates");
@@ -138,22 +127,34 @@ export default function FieldsPage() {
     // --------------------------------------
     const handleDelete = async (ids) => {
         try {
-            await fetch("http://127.0.0.1:8000/delete-fields", {
+            const url = apiBuildUrl("/fields/delete");
+
+            const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ base, ids }),
+                body: JSON.stringify({ base, ids, entity }),
             });
 
-            alert("Deleted!");
+            const data = await res.json(); // parse JSON
+
+            if (!res.ok) {
+                // status 400/500
+                alert("Delete failed: " + (data.detail || data.message || "Unknown error"));
+                return;
+            }
+
+            // Success
+            alert(data.message || "Deleted!");
 
             findDuplicates();
             setSelectedIds([]);
 
         } catch (err) {
             console.error(err);
-            alert("Delete failed");
+            alert("Delete failed: " + err.message);
         }
     };
+
 
     return (
         <Layout>
@@ -287,59 +288,58 @@ export default function FieldsPage() {
                                 </thead>
 
                                 <tbody>
-                                    {duplicates.map((f, i) => (
-                                        <tr key={i} className="border-b border-white/10">
+                                    {duplicates.map((dupGroup, i) => (
+                                        <React.Fragment key={i}>
+                                            {dupGroup.fields.map((f, j) => (
+                                                <tr key={j} className="border-b border-white/10">
+                                                    {/* Checkbox */}
+                                                    <td className="p-2">
+                                                        {f.id && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedIds.includes(f.id)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setSelectedIds([...selectedIds, f.id]);
+                                                                    } else {
+                                                                        setSelectedIds(selectedIds.filter(x => x !== f.id));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </td>
 
-                                            {/* Checkbox */}
-                                            <td className="p-2">
-                                                {f.id ? (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedIds.includes(f.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                setSelectedIds([...selectedIds, f.id]);
-                                                            } else {
-                                                                setSelectedIds(
-                                                                    selectedIds.filter(x => x !== f.id)
-                                                                );
-                                                            }
-                                                        }}
-                                                    />
-                                                ) : null}
-                                            </td>
+                                                    {/* Delete single */}
+                                                    <td className="p-2">
+                                                        {f.id && (
+                                                            <button
+                                                                className="bg-red-600 px-3 py-1 rounded"
+                                                                onClick={() => {
+                                                                    setPendingDeleteIds([f.id]);
+                                                                    setShowModal(true);
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        )}
+                                                    </td>
 
-                                            {/* Delete single */}
-                                            <td className="p-2">
-                                                {f.id && (
-                                                    <button
-                                                        className="bg-red-600 px-3 py-1 rounded"
-                                                        onClick={() => {
-                                                            setPendingDeleteIds([f.id]);
-                                                            setShowModal(true);
-                                                        }}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
-                                            </td>
-
-                                            <td className="p-2 break-words">{f.label}</td>
-                                            <td className="p-2 break-words">{f.code}</td>
-                                            <td className="p-2 break-words">{f.type}</td>
-
-                                            <td className="p-2 whitespace-pre-line break-words">
-                                                {f.type === "enumeration"
-                                                    ? (f.list || []).map(v =>
-                                                        v.VALUE || v.value || ""
-                                                    ).join("\n")
-                                                    : "-"}
-                                            </td>
-
-                                            <td className="p-2">{f.id || ""}</td>
-                                        </tr>
+                                                    <td className="p-2 break-words">{dupGroup.label}</td>
+                                                    <td className="p-2 break-words">{f.code}</td>
+                                                    <td className="p-2 break-words">{f.type}</td>
+                                                    <td className="p-2 whitespace-pre-line break-words">
+                                                        {f.type === "enumeration"
+                                                            ? (f.list || []).map(v => v.VALUE || v.value || "").join("\n")
+                                                            : "-"}
+                                                    </td>
+                                                    <td className="p-2">{f.id || ""}</td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
+
+
                             </table>
 
                             {/* Delete Selected under table */}
@@ -414,11 +414,10 @@ export default function FieldsPage() {
                             <div className="flex gap-3">
                                 <button
                                     disabled={deleteConfirmText !== "deletefield"}
-                                    className={`btn flex-1 ${
-                                        deleteConfirmText !== "deletefield"
-                                            ? "opacity-40 cursor-not-allowed"
-                                            : ""
-                                    }`}
+                                    className={`btn flex-1 ${deleteConfirmText !== "deletefield"
+                                        ? "opacity-40 cursor-not-allowed"
+                                        : ""
+                                        }`}
                                     onClick={() => {
                                         handleDelete(pendingDeleteIds);
                                         setShowModal(false);
