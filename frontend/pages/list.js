@@ -1,5 +1,3 @@
-// frontend/pages/list.js
-
 import { useState, useEffect, useContext, useRef } from 'react';
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
@@ -8,22 +6,18 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
 import { buildUrl } from "../lib/api";
 
-// Utility function to format Date object into YYYY-MM-DD string
+// Utility: format Date → YYYY-MM-DD
 const formatDate = (date) => {
   const d = new Date(date);
   let month = '' + (d.getMonth() + 1);
   let day = '' + d.getDate();
   const year = d.getFullYear();
-
-  if (month.length < 2)
-    month = '0' + month;
-  if (day.length < 2)
-    day = '0' + day;
-
+  if (month.length < 2) month = '0' + month;
+  if (day.length < 2) day = '0' + day;
   return [year, month, day].join('-');
 };
 
-// NEW: Function to format labels from SOURCE_ID → Source Id
+// Format labels: SOURCE_ID → Source Id
 const formatLabel = (label) => {
   if (!label) return '';
   let cleaned = label.replace(/[_\-\.]/g, ' ').toLowerCase();
@@ -37,38 +31,33 @@ export default function ListPage() {
   const { webhook } = useContext(WebhookContext);
 
   const [base, setBase] = useState('');
+  const [entity, setEntity] = useState('lead');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [entity, setEntity] = useState('lead');
 
   const [rows, setRows] = useState([]);
-  const [allFields, setAllFields] = useState([]); // [{code,label}]
+  const [allFields, setAllFields] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
   const [fieldSearch, setFieldSearch] = useState('');
+  const [fieldMap, setFieldMap] = useState({});
+  const [enumsMap, setEnumsMap] = useState({}); // code → {id: label}
+  const [viewMode, setViewMode] = useState("horizontal"); // default to horizontal view
   const [showFieldModal, setShowFieldModal] = useState(false);
 
-  const [fieldMap, setFieldMap] = useState({}); // code -> label
-  // ⭐ FIX: Correctly initialize enumsMap as a state variable
-  const [enumsMap, setEnumsMap] = useState({}); // code -> {id: label}
 
-  // NEW: horizontal/vertical view toggle
-  const [viewMode, setViewMode] = useState('horizontal'); // horizontal | vertical
 
-  // Loading spinner message
-  const [loadingMessage, setLoadingMessage] = useState('Loading...');
   const [loading, setLoading] = useState(false);
-
+  const [loadingMessage, setLoadingMessage] = useState('Loading...');
 
   const defaultFieldsMap = {
-    lead: ['ID', 'TITLE', 'NAME', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE'],
-    deal: ['ID', 'TITLE', 'NAME', 'CONTACT_ID', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE']
+    lead: ['ID', 'TITLE', 'NAME', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE', 'ASSIGNED_BY_ID'],
+    deal: ['ID', 'TITLE', 'NAME', 'CONTACT_ID', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE', 'ASSIGNED_BY_ID'],
   };
 
-  // Initial Date
+  // Initialize Dates
   useEffect(() => {
     const today = new Date();
     setToDate(formatDate(today));
-
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
     setFromDate(formatDate(sevenDaysAgo));
@@ -86,19 +75,16 @@ export default function ListPage() {
   // Fetch fields on entity/base change
   useEffect(() => {
     if (!base) return;
-
     setAllFields([]);
     setSelectedFields([]);
 
-    fetch(buildUrl(`/fields/${entity}`, { base }))
+    fetch(buildUrl(`/api/v1/fields/${entity}`, { base }))
       .then(r => r.json())
       .then(j => {
-        const opts = Object.entries(j.code_to_label || {})
-          .map(([code, label]) => ({ code, label }));
-
+        const opts = (j.code_to_label ? Object.entries(j.code_to_label).map(([code, label]) => ({ code, label })) : []);
         setAllFields(opts);
         setFieldMap(j.code_to_label || {});
-        setEnumsMap(j.enums || {}); // Set the state here
+        setEnumsMap(j.enums || {});
 
         const initialSelected = defaultFieldsMap[entity]
           .map(code => opts.find(f => f.code === code) || { code, label: code })
@@ -117,73 +103,67 @@ export default function ListPage() {
     }
   };
 
-  // Fetch List API
+  // Fetch list
   const fetchList = async () => {
     if (!base) return alert("Enter base webhook URL");
-    if (selectedFields.length === 0) return alert("Select at least one field");
+    if (!selectedFields.length) return alert("Select at least one field");
 
     const params = { base, select: selectedFields.join(',') };
     if (fromDate) params.from_created = fromDate;
     if (toDate) params.to_created = toDate;
-    const url = buildUrl(`/list/${entity}`, params);
+
+    const url = buildUrl(`/api/v1/list/${entity}`, params);
 
     try {
       setLoadingMessage("Fetching data...");
-      setLoading(true);               // 🔴 START loading
-
+      setLoading(true);
       const r = await fetch(url);
       const j = await r.json();
-
       setRows(j.result || []);
     } catch (e) {
       alert(`Error: ${e.message}`);
     } finally {
-      setLoading(false);              // 🟢 STOP loading
+      setLoading(false);
     }
   };
 
-
+  // Field toggle
   const toggleField = (code) => {
-    if (selectedFields.includes(code)) {
-      setSelectedFields(selectedFields.filter(f => f !== code));
-    } else {
-      setSelectedFields([...selectedFields, code]);
-    }
+    setSelectedFields(prev => prev.includes(code) ? prev.filter(f => f !== code) : [...prev, code]);
   };
-
   const selectAll = () => setSelectedFields(allFields.map(f => f.code));
   const deselectAll = () => setSelectedFields([]);
 
-  const filteredFields = allFields.filter(f =>
-    f.label.toLowerCase().includes(fieldSearch.toLowerCase())
-  );
+  const filteredFields = allFields.filter(f => f.label.toLowerCase().includes(fieldSearch.toLowerCase()));
 
-  // CSV download with enum decoding and label headers
+  // CSV download
   const downloadCSV = () => {
-    if (rows.length === 0) return alert('No rows to download');
+    if (!rows.length) return alert('No rows to download');
     const headers = selectedFields.map(h => formatLabel(fieldMap[h] || h));
     const csvLines = [headers.join(',')];
+
     rows.forEach(r => {
       const line = selectedFields.map(h => {
         let v = r[h];
-        // Decode enum values if needed
-        if (v !== null && v !== undefined && typeof v !== 'object' && enumsMap && enumsMap[h]) {
-          const decoded = enumsMap[h][String(v)];
-          if (decoded !== undefined) v = decoded;
+        if (v !== null && v !== undefined && typeof v !== 'object' && enumsMap[h]) {
+          v = enumsMap[h][String(v)] ?? v;
         }
-        if (Array.isArray(v)) v = v.map(i => i.VALUE ? `${i.VALUE} (${i.VALUE_TYPE})` : JSON.stringify(i)).join('; ');
-        else if (v && typeof v === 'object' && 'VALUE' in v) v = v.VALUE;
+        if (Array.isArray(v)) {
+          v = v.map(i => i.VALUE ? `${i.VALUE} (${i.VALUE_TYPE})` : JSON.stringify(i)).join('; ');
+        } else if (v && typeof v === 'object' && 'VALUE' in v) v = v.VALUE;
         if (v === null || v === undefined) v = '';
         return `"${String(v).replace(/"/g, '""')}"`;
       }).join(',');
       csvLines.push(line);
     });
+
     const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${entity}_list.csv`;
     link.click();
   };
+
 
   return (
     <>

@@ -75,6 +75,13 @@ export default function Home() {
 
           <div className="grid grid-cols-1 gap-3">
             <button
+              onClick={() => navigate("/fields")}
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-lg text-left transition-colors"
+            >
+              📄 List Field & Find Duplicate
+            </button>
+
+            <button
               onClick={() => navigate("/list")}
               className="p-3 bg-white/10 hover:bg-white/20 rounded-lg text-left transition-colors"
             >

@@ -3,6 +3,10 @@ import { useState, useEffect, useContext, useRef } from "react";
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
 import ExpandableCard from "../components/ExpandableCard";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import LoadingButton from "../components/LoadingButton";
+import LoadingSpinner from "../components/LoadingSpinner";
+
 
 // Utility function to format labels (e.g., SOURCE_ID -> Source Id)
 const formatLabel = (label) => {
@@ -45,32 +49,29 @@ export default function GetPage() {
 
   // load field defs when base or entity changes
   useEffect(() => {
-    if (!base) return;
+  if (!base) return;
 
-    (async () => {
-      try {
-        const u = `http://127.0.0.1:8000/fields/${entity}?base=${encodeURIComponent(base)}`;
-        const r = await fetch(u);
-        if (!r.ok) throw new Error("Failed to load fields");
-        const j = await r.json();
-        setFieldMap(j.code_to_label || {});
-        setEnumsMap(j.enums || {});
-      } catch (e) {
-        console.error("Field load error", e);
-        setFieldMap({});
-        setEnumsMap({});
-      }
-    })();
-  }, [entity, base]);
+  (async () => {
+    try {
+      const u = apiBuildUrl(`/fields/${entity}`, { base });
+      console.log("Fetching fields from:", u);
+      const r = await fetch(u);
+      console.log("Response status:", r.status);
+      const j = await r.json();
+      console.log("Response JSON:", j);
+      // if (!r.ok) throw new Error("Failed to load fields");
+      setFieldMap(j.code_to_label || {});
+      setEnumsMap(j.enums || {});
+    } catch (e) {
+      console.error("Field load error", e);
+      setFieldMap({});
+      setEnumsMap({});
+    }
+  })();
+}, [entity, base]);
+
 
   // helpers
-  const buildUrl = (path, qs = {}) => {
-    const u = new URL(path, "http://127.0.0.1:8000");
-    Object.entries(qs).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);
-    });
-    return u.toString();
-  };
 
   async function doSingleFetch() {
     if (!base || !idSingle) {
@@ -80,14 +81,14 @@ export default function GetPage() {
     setLoading(true);
     setError("");
     try {
-      const url = buildUrl("/get/single", { entity, item_id: idSingle, base });
+      const url = apiBuildUrl("/get/single", { entity, item_id: idSingle, base });
       const res = await fetch(url);
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(txt || `Status ${res.status}`);
       }
       const j = await res.json();
-      setRows([j]);
+      setRows(j.result || []); // ✅ changed to j.result to match backend uniform return
     } catch (e) {
       setError(String(e.message || e));
       setRows([]);
@@ -95,6 +96,7 @@ export default function GetPage() {
       setLoading(false);
     }
   }
+
 
   async function doCommaFetch() {
     if (!base || !idsComma) {
@@ -109,7 +111,7 @@ export default function GetPage() {
     setLoading(true);
     setError("");
     try {
-      const url = buildUrl("/get/multiple", { entity, ids: ids.join(","), base });
+      const url = apiBuildUrl("/get/multiple", { entity, ids: ids.join(","), base });
       const res = await fetch(url);
       if (!res.ok) {
         const txt = await res.text();
@@ -139,10 +141,10 @@ export default function GetPage() {
     setLoading(true);
     setError("");
     try {
-      const u = buildUrl("/get/file", { entity, base });
+      const url = apiBuildUrl("/get/file", { entity, base });
       const fd = new FormData();
       fd.append("file", f);
-      const res = await fetch(u, { method: "POST", body: fd });
+      const res = await fetch(url, { method: "POST", body: fd });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(txt || `Status ${res.status}`);
@@ -234,15 +236,23 @@ export default function GetPage() {
 
   return (
     <Layout>
+      {loading && <LoadingSpinner
+        message={
+          method === "single" ? "Fetching single record..." :
+            method === "comma" ? "Fetching multiple records..." :
+              method === "file" ? "Uploading & Fetching..." :
+                "Loading..."
+        }
+      />}
       {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
       <div className="min-h-screen p-4 sm:p-6 md:p-10">
         {/* 🟢 CHANGE: Increased Max Width for better table viewing */}
         <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
-          
+
           {/* Controls */}
           <div className="glass p-6">
             <h3 className="font-semibold mb-3">Get Records</h3>
-            
+
             <div className="flex flex-col lg:flex-row gap-2 justify-between">
               {/* Entity Buttons */}
               <div className="flex gap-2 items-center mb-3">
@@ -259,7 +269,7 @@ export default function GetPage() {
                   Deal
                 </button>
               </div>
-              
+
               {/* 2. Method Buttons: Added flex-wrap for responsiveness */}
               <div className="flex flex-wrap gap-2 items-center mb-3">
                 <button
@@ -302,9 +312,15 @@ export default function GetPage() {
                     placeholder="Enter ID"
                     className="p-2 rounded bg-white/5 flex-1"
                   />
-                  <button onClick={doSingleFetch} className="btn w-full sm:w-auto" disabled={loading}>
-                    {loading ? "Loading..." : "Fetch"}
-                  </button>
+                  <LoadingButton
+                    onClick={doSingleFetch}
+                    loading={loading}
+                    loadingText="Fetching..."
+                    className="btn w-full sm:w-auto"
+                  >
+                    Fetch
+                  </LoadingButton>
+
                 </div>
               )}
 
@@ -317,19 +333,25 @@ export default function GetPage() {
                     placeholder="e.g. 10,20,30"
                     className="p-2 rounded bg-white/5 flex-1"
                   />
-                  <button onClick={doCommaFetch} className="btn w-full sm:w-auto" disabled={loading}>
-                    {loading ? "Loading..." : "Fetch"}
-                  </button>
+                  <LoadingButton
+                    onClick={doCommaFetch}
+                    loading={loading}
+                    loadingText="Fetching..."
+                    className="btn w-full sm:w-auto"
+                  >
+                    Fetch
+                  </LoadingButton>
+
                 </div>
               )}
 
               {/* ⭐️ FILE UPLOAD SECTION (Updated for custom styling) ⭐️ */}
               {method === "file" && (
                 <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                  
+
                   {/* File selector group: takes up most space on larger screens */}
-                  <div className="flex gap-3 items-center flex-1 w-full"> 
-                    
+                  <div className="flex gap-3 items-center flex-1 w-full">
+
                     {/* Custom styled file input button */}
                     <label
                       htmlFor="fileInput"
@@ -356,8 +378,8 @@ export default function GetPage() {
                     />
 
                     {/* Display File Name */}
-                    <span 
-                      className={`text-sm ${fileName ? "text-white" : "text-white/50"} truncate`} 
+                    <span
+                      className={`text-sm ${fileName ? "text-white" : "text-white/50"} truncate`}
                       title={fileName}
                     >
                       {fileName || "No file chosen (.csv, .xlsx)"}
@@ -365,9 +387,16 @@ export default function GetPage() {
                   </div>
 
                   {/* Fetch Button */}
-                  <button onClick={doFileFetch} className="btn w-full sm:w-auto" disabled={loading || !fileName}>
-                    {loading ? "Uploading..." : "Upload & Fetch"}
-                  </button>
+                  <LoadingButton
+                    onClick={doFileFetch}
+                    loading={loading}
+                    loadingText="Uploading & Fetching..."
+                    disabled={!fileName}
+                    className="btn w-full sm:w-auto"
+                  >
+                    Upload & Fetch
+                  </LoadingButton>
+
                 </div>
               )}
               {/* ⭐️ END FILE UPLOAD SECTION ⭐️ */}

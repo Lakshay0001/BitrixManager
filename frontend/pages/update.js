@@ -1301,6 +1301,7 @@ export default function UpdatePage() {
   // Render (keeps your earlier layout)
   return (
     <Layout>
+      {loading && <LoadingSpinner message="Loading..." />}
       {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
       <div className="min-h-screen p-4 sm:p-6 md:p-10">
         {/* 🟢 CHANGE: Increased Max Width for better table viewing */}

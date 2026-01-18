@@ -3,6 +3,10 @@ import { useState, useEffect, useContext, useRef } from "react";
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
 import ExpandableCard from "../components/ExpandableCard";
+import LoadingSpinner from "../components/LoadingSpinner";
+import LoadingButton from "../components/LoadingButton";
+import { buildUrl } from "../lib/api";
+
 
 // Utility function to format labels (e.g., SOURCE_ID -> Source Id)
 const formatLabel = (label) => {
@@ -79,12 +83,13 @@ export default function DeletePage() {
     if (!base) return;
     (async () => {
       try {
-        const u = `http://127.0.0.1:8000/fields/${entity}?base=${encodeURIComponent(base)}`;
+        const u = buildUrl(`/fields/${entity}`, { base });
         const r = await fetch(u);
-        if (!r.ok) throw new Error("Failed to load fields");
         const j = await r.json();
-        setFieldMap(j.code_to_label || {});
-        setEnumsMap(j.enums || {});
+
+        setFieldMap(j.result?.code_to_label || {});
+        setEnumsMap(j.result?.enums || {});
+
       } catch (e) {
         console.error("Field load error", e);
         setFieldMap({});
@@ -105,73 +110,117 @@ export default function DeletePage() {
   // fetch helpers (mirror get.js usage)
   async function fetchSingle() {
     if (!base || !idSingle) return alert("Enter base and ID");
-    setLoading(true); setError("");
+
+    setLoading(true);
+    setError("");
+
     try {
-      const url = buildUrl("/get/single", { entity, item_id: idSingle, base });
+      const url = buildUrl("/get/single", {
+        entity,
+        item_id: idSingle,
+        base,
+      });
+
       const r = await fetch(url);
-      if (!r.ok) {
-        const txt = await r.text();
-        throw new Error(txt || `Status ${r.status}`);
-      }
+      if (!r.ok) throw new Error(await r.text());
+
       const j = await r.json();
-      setRows([{ ...(j || {}), ID: String(j.ID ?? j.id ?? idSingle) }]);
+      setRows(j.result || []);
       setSelectedIds(new Set());
     } catch (e) {
-      setError(String(e.message || e)); setRows([]); setSelectedIds(new Set());
-    } finally { setLoading(false); }
+      setError(e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   }
+
 
   async function fetchComma() {
-    if (!base || !idsComma) return alert("Provide comma separated IDs");
-    const ids = idsComma.split(",").map(s => s.trim()).filter(Boolean);
-    if (ids.length === 0) return alert("No valid IDs found");
-    setLoading(true); setError("");
-    try {
-      // No dedicated /get/multiple in backend? get multiple by iterating (like update.js)
-      const fetched = [];
-      for (const id of ids) {
-        const url = buildUrl(`/get/${entity}/${id}`, { base });
-        const res = await fetch(url);
-        if (res.ok) {
-          const j = await res.json();
-          fetched.push({ ...(j || {}), ID: String(j.ID ?? j.id ?? id) });
-        } else {
-          console.warn(`Could not fetch ${id}: ${res.status}`);
-        }
-      }
-      if (fetched.length === 0) throw new Error("Could not fetch any records with provided IDs.");
-      setRows(fetched);
-      setSelectedIds(new Set());
-    } catch (e) {
-      setError(String(e.message || e)); setRows([]); setSelectedIds(new Set());
-    } finally { setLoading(false); }
-  }
+    if (!base || !idsComma) {
+      alert("Provide comma separated IDs");
+      return;
+    }
 
-  async function fetchFile() {
-    if (!base) return alert("Provide webhook base first");
-    const f = fileRef.current?.files?.[0];
-    if (!f) return alert("Select file");
-    setLoading(true); setError("");
+    const ids = idsComma
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (ids.length === 0) {
+      alert("No valid IDs found");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      // reuse same endpoint used in get.js if available
-      const u = buildUrl("/get/file", { entity, base });
-      const fd = new FormData();
-      fd.append("file", f);
-      const res = await fetch(u, { method: "POST", body: fd });
+      // ✅ USE get/multiple (NO LOOP)
+      const url = apiBuildUrl("/get/multiple", {
+        entity,
+        ids: ids.join(","), // backend expects comma string
+        base,
+      });
+
+      const res = await fetch(url);
+
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(txt || `Status ${res.status}`);
       }
+
       const j = await res.json();
-      const arr = j.result || [];
-      // ensure ID present as string
-      const mapped = arr.map(r => ({ ...(r || {}), ID: String(r.ID ?? r.id ?? "") }));
-      setRows(mapped);
+
+      const records = (j.result || []).map((r) => ({
+        ...(r || {}),
+        ID: String(r.ID ?? r.id ?? ""),
+      }));
+
+      if (records.length === 0) {
+        throw new Error("No records found for provided IDs");
+      }
+
+      setRows(records);
       setSelectedIds(new Set());
     } catch (e) {
-      setError(String(e.message || e)); setRows([]); setSelectedIds(new Set());
-    } finally { setLoading(false); }
+      setError(String(e.message || e));
+      setRows([]);
+      setSelectedIds(new Set());
+    } finally {
+      setLoading(false);
+    }
   }
+
+
+  async function fetchFile() {
+    if (!base) return alert("Provide webhook base");
+
+    const f = fileRef.current?.files?.[0];
+    if (!f) return alert("Select file");
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const url = buildUrl("/get/file", { entity, base });
+      const fd = new FormData();
+      fd.append("file", f);
+
+      const r = await fetch(url, { method: "POST", body: fd });
+      if (!r.ok) throw new Error(await r.text());
+
+      const j = await r.json();
+      setRows(j.result || []);
+      setSelectedIds(new Set());
+    } catch (e) {
+      setError(e.message);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   async function onFetchClick() {
     if (method === "single") return await fetchSingle();
@@ -246,56 +295,60 @@ export default function DeletePage() {
 
   // batch delete (calls backend batch endpoint if available; else calls delete per id)
   async function deleteBatch(idList) {
-    if (!base) return alert("Base required");
-    if (!idList || idList.length === 0) return alert("No IDs to delete");
+    if (!base) {
+      alert("Base required");
+      return;
+    }
+    if (!idList || idList.length === 0) {
+      alert("No IDs to delete");
+      return;
+    }
+
     setLoading(true);
     const out = [];
-    // try server batch endpoint first
+
     try {
-      const url = `http://127.0.0.1:8000/delete/batch?base=${encodeURIComponent(base)}`;
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity, ids: idList })
-      });
-      if (r.ok) {
-        const j = await r.json();
-        // Expect j.results = [{id, result, error_description?}, ...]
-        if (Array.isArray(j.results)) {
-          j.results.forEach(res => {
-            out.push({
-              id: String(res.id),
-              status: res.result === true || res.result ? "ok" : "error",
-              msg: res.error_description || JSON.stringify(res)
-            });
-          });
-        } else {
-          // fallback: j maybe mapping
-          out.push({ id: "batch", status: "info", msg: JSON.stringify(j) });
-        }
-      } else {
-        // fallback to per-id deletes
-        throw new Error("Batch endpoint failed, falling back to single delete.");
-      }
-    } catch (e) {
-      // per-id fallback
       for (const id of idList) {
         try {
-          const r = await fetch(`http://127.0.0.1:8000/delete/${entity}/${encodeURIComponent(id)}?base=${encodeURIComponent(base)}`, { method: "POST" });
-          const j = await r.json();
-          const ok = (j.result === true || j.result);
-          out.push({ id: String(id), status: ok ? "ok" : "error", msg: ok ? "Deleted" : JSON.stringify(j) });
-          // small delay to be gentle
-          await new Promise(res => setTimeout(res, 80));
+          const url = apiBuildUrl(`/delete/${entity}/${id}`, { base });
+
+          const res = await fetch(url, {
+            method: "POST",
+          });
+
+          const j = await res.json();
+
+          const ok = j?.result === true;
+
+          out.push({
+            id: String(id),
+            status: ok ? "ok" : "error",
+            msg: ok ? "Deleted successfully" : JSON.stringify(j),
+          });
+
+          // ⏱ small delay (Bitrix safe)
+          await new Promise((r) => setTimeout(r, 80));
         } catch (err) {
-          out.push({ id: String(id), status: "error", msg: String(err.message || err) });
+          out.push({
+            id: String(id),
+            status: "error",
+            msg: String(err.message || err),
+          });
         }
       }
     } finally {
-      // remove deleted ids from rows
-      const deletedIds = out.filter(o => o.status === "ok").map(o => String(o.id));
-      setRows(prev => prev.filter(r => !deletedIds.includes(String(r.ID))));
-      setSummary(prev => [...out, ...prev]);
+      // ✅ remove deleted rows from UI
+      const deletedIds = out
+        .filter((o) => o.status === "ok")
+        .map((o) => String(o.id));
+
+      setRows((prev) =>
+        prev.filter((r) => !deletedIds.includes(String(r.ID)))
+      );
+
+      // ✅ update summary
+      setSummary((prev) => [...out, ...prev]);
+
       setSelectedIds(new Set());
       setLoading(false);
     }
@@ -314,10 +367,10 @@ export default function DeletePage() {
   async function handleDeleteWithoutDownload(idsToUse) {
     if (!idsToUse || idsToUse.length === 0) return alert("No IDs found for deletion.");
     if (deleteConfirmText !== "deleterecord") return;
-    
+
     // Check again, as confirmation text is met, but a final prompt is good practice for "Delete Anyway"
     if (!window.confirm(`Are you sure you want to delete ${idsToUse.length} records NOW without a backup? This cannot be undone.`)) return;
-    
+
     await deleteBatch(idsToUse);
     resetDeleteModal();
   }
@@ -348,7 +401,8 @@ export default function DeletePage() {
 
   return (
     <Layout>
-       {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
+      {loading && <LoadingSpinner message="Processing delete..." />}
+      {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
       <div className="min-h-screen p-4 sm:p-6 md:p-10">
         {/* 🟢 CHANGE: Increased Max Width for better table viewing */}
         <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
@@ -379,7 +433,14 @@ export default function DeletePage() {
               {method === "single" && (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input value={idSingle} onChange={e => setIdSingle(e.target.value)} placeholder="Enter ID" className="p-2 rounded bg-white/5 flex-1" />
-                  <button onClick={fetchSingle} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
+                  <LoadingButton
+                    loading={loading}
+                    onClick={fetchSingle}
+                    className="w-full sm:w-auto"
+                  >
+                    Fetch
+                  </LoadingButton>
+
                 </div>
               )}
 
@@ -387,17 +448,24 @@ export default function DeletePage() {
               {method === "comma" && (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input value={idsComma} onChange={e => setIdsComma(e.target.value)} placeholder="e.g. 10,20,30" className="p-2 rounded bg-white/5 flex-1" />
-                  <button onClick={fetchComma} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
+                  <LoadingButton
+                    loading={loading}
+                    onClick={fetchComma}
+                    className="w-full sm:w-auto"
+                  >
+                    Fetch
+                  </LoadingButton>
+
                 </div>
               )}
 
               {/* ⭐️ FILE UPLOAD SECTION (Responsive Custom Input) ⭐️ */}
               {method === "file" && (
                 <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                  
+
                   {/* File selector group */}
-                  <div className="flex gap-3 items-center flex-1 w-full"> 
-                    
+                  <div className="flex gap-3 items-center flex-1 w-full">
+
                     {/* Custom styled file input button */}
                     <label
                       htmlFor="deleteFileInput"
@@ -417,8 +485,8 @@ export default function DeletePage() {
                     />
 
                     {/* Display File Name */}
-                    <span 
-                      className={`text-sm ${fileName ? "text-white" : "text-white/50"} truncate`} 
+                    <span
+                      className={`text-sm ${fileName ? "text-white" : "text-white/50"} truncate`}
                       title={fileName}
                     >
                       {fileName || "No file chosen (.csv, .xlsx)"}
@@ -426,9 +494,15 @@ export default function DeletePage() {
                   </div>
 
                   {/* Fetch Button */}
-                  <button onClick={fetchFile} className="btn w-full sm:w-auto" disabled={loading || !fileName}>
-                    {loading ? "Uploading..." : "Upload & Fetch"}
-                  </button>
+                  <LoadingButton
+                    loading={loading}
+                    onClick={fetchFile}
+                    disabled={!fileName}
+                    className="w-full sm:w-auto"
+                  >
+                    Upload & Fetch
+                  </LoadingButton>
+
                 </div>
               )}
               {/* ⭐️ END FILE UPLOAD SECTION ⭐️ */}
@@ -524,7 +598,7 @@ export default function DeletePage() {
                     }
                   >
                     {/* Inner grid updated to be responsive */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {Object.entries(r)
                         .filter(([k, v]) => v !== null && v !== undefined && String(v) !== "")
                         .map(([k, v]) => (
@@ -643,7 +717,7 @@ export default function DeletePage() {
             />
 
             {/* Buttons: Added flex-wrap for responsiveness */}
-            <div className="flex flex-wrap gap-3"> 
+            <div className="flex flex-wrap gap-3">
               <button
                 className={`btn flex-1 min-w-[150px] ${deleteConfirmText === "deleterecord" ? "" : "opacity-40 cursor-not-allowed"}`}
                 disabled={deleteConfirmText !== "deleterecord"}
@@ -661,7 +735,7 @@ export default function DeletePage() {
                 Delete Without Backup
               </button>
             </div>
-            
+
             {/* Removed redundant count text from bottom */}
           </div>
         </div>

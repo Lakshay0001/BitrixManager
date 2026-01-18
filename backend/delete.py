@@ -1,5 +1,5 @@
 # backend/delete.py
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from typing import List
 from pydantic import BaseModel
 from .bitrix_wrapper import BitrixWrapper
@@ -13,9 +13,12 @@ class DuplicateDeleteRequest(BaseModel):
 
 @router.post("/delete/{entity}/{item_id}")
 def delete_item(entity: str, item_id: str, base: str = Query(...)):
-    """Delete an item for an entity."""
+    """Delete a single item for an entity."""
     bx = BitrixWrapper(base)
-    return bx.delete_single(item_id, entity)
+    ok, res = bx.delete_single(item_id, entity)
+    if not ok:
+        raise HTTPException(status_code=400, detail=res)
+    return {"success": True, "entity": entity, "item_id": item_id, "result": res}
 
 
 @router.post("/fields/delete")
@@ -24,9 +27,9 @@ def delete_duplicates(req: DuplicateDeleteRequest, base: str = Query(...)):
     bx = BitrixWrapper(base)
     summary = []
     for fid in req.ids:
-        res = bx.delete_single(fid, 'userfield')
-        if res.get("result") is True:
+        ok, res = bx.delete_single(fid, 'userfield')
+        if ok and res.get("result") is True:
             summary.append({"id": fid, "status": "ok", "msg": "Deleted successfully"})
         else:
             summary.append({"id": fid, "status": "error", "msg": res})
-    return summary
+    return {"success": True, "result": summary}

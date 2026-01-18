@@ -10,12 +10,14 @@ router = APIRouter()
 
 @router.get("/template/{entity}")
 def download_template(entity: str, base: str = Query(...)):
-    """Download an Excel template for an entity with all fields and enumerations."""
+    """
+    Download Excel template for an entity with all fields and enumerations.
+    Returns streaming response (Excel file).
+    """
     bx = BitrixWrapper(base)
     ok, fields = bx.fetch_field_definitions(entity)
-
     if not ok:
-        raise HTTPException(status_code=400, detail="Could not fetch fields")
+        return {"success": False, "error": "could_not_fetch_fields"}
 
     code_to_label = fields.get("code_to_label", {})
     enums = fields.get("enums", {})
@@ -34,28 +36,25 @@ def download_template(entity: str, base: str = Query(...)):
             "LAST_NAME": "Contact Last Name",
         })
 
-    # Build horizontal Excel
+    # Build Excel
     wb = Workbook()
     ws = wb.active
     ws.title = f"{entity.upper()} Template"
 
-    # Row 1: all labels horizontally
+    # Row 1: all labels
     labels_row = list(code_to_label.values()) + list(extra_labels.values())
     ws.append(labels_row)
 
-    # Row 2: all enum values horizontally
+    # Row 2: enums
     enum_values_row = []
-
     for code in list(code_to_label.keys()) + list(extra_labels.keys()):
         if code in enums:
-            allowed_values = ", ".join(enums[code].values())
+            enum_values_row.append(", ".join(enums[code].values()))
         else:
-            allowed_values = ""
-        enum_values_row.append(allowed_values)
-
+            enum_values_row.append("")
     ws.append(enum_values_row)
 
-    # Create stream
+    # Stream
     file_stream = io.BytesIO()
     wb.save(file_stream)
     file_stream.seek(0)
@@ -63,27 +62,28 @@ def download_template(entity: str, base: str = Query(...)):
     return StreamingResponse(
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename={entity}_template.xlsx"
-        }
+        headers={"Content-Disposition": f"attachment; filename={entity}_template.xlsx"},
     )
 
 
 @router.post("/template/custom/{entity}")
 def custom_template(entity: str, base: str = Query(...), payload: dict = {}):
-    """Download a custom Excel template for an entity with selected fields."""
+    """
+    Download a custom Excel template for an entity with selected fields.
+    `payload` should contain {"fields": ["FIELD1","FIELD2"]}.
+    """
     selected_fields = payload.get("fields", [])
+    if not selected_fields:
+        return {"success": False, "error": "no_fields_selected"}
 
     bx = BitrixWrapper(base)
     ok, fields = bx.fetch_field_definitions(entity)
-
     if not ok:
-        raise HTTPException(status_code=400, detail="Could not fetch fields")
+        return {"success": False, "error": "could_not_fetch_fields"}
 
     code_to_label = fields.get("code_to_label", {})
     enums = fields.get("enums", {})
 
-    # Excel
     wb = Workbook()
     ws = wb.active
     ws.title = f"{entity.upper()} Custom Template"
@@ -94,11 +94,7 @@ def custom_template(entity: str, base: str = Query(...), payload: dict = {}):
     for code in selected_fields:
         label = code_to_label.get(code, code)
         labels_row.append(label)
-
-        if code in enums:
-            enum_values_row.append(", ".join(enums[code].values()))
-        else:
-            enum_values_row.append("")
+        enum_values_row.append(", ".join(enums[code].values()) if code in enums else "")
 
     ws.append(labels_row)
     ws.append(enum_values_row)
@@ -110,5 +106,5 @@ def custom_template(entity: str, base: str = Query(...), payload: dict = {}):
     return StreamingResponse(
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={entity}_custom_template.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename={entity}_custom_template.xlsx"},
     )

@@ -1,13 +1,21 @@
-# UPDATED main.py - Organized with modular routers
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-app = FastAPI(title="Bitrix Manager Backend")
+# --------------------------------------------------
+# APP INIT
+# --------------------------------------------------
+app = FastAPI(
+    title="Bitrix Manager Backend",
+    version="1.0.0"
+)
 
-# Allow CORS from frontend domain (configurable via env var)
+# --------------------------------------------------
+# CORS CONFIG
+# --------------------------------------------------
+# '*' by default for local dev; override with environment variable in Render
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -16,42 +24,55 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import routers (package-relative imports)
-from .get import router as get_router
-from .list import router as list_router
-from .fields import router as fields_router
-from .update import router as update_router
-from .delete import router as delete_router
-from .template import router as template_router
+# --------------------------------------------------
+# API PREFIX (IMPORTANT)
+# --------------------------------------------------
+API_PREFIX = "/api/v1"
 
-# Include routers
-app.include_router(get_router)
-app.include_router(list_router)
-app.include_router(fields_router)
-app.include_router(update_router)
-app.include_router(delete_router)
-app.include_router(template_router)
+# --------------------------------------------------
+# IMPORT ROUTERS
+# --------------------------------------------------
+# Use absolute imports for Render deployment compatibility
+from backend.get import router as get_router
+from backend.list import router as list_router
+from backend.fields import router as fields_router
+from backend.update import router as update_router
+from backend.delete import router as delete_router
+from backend.template import router as template_router
 
-# Health check endpoint
-@app.get("/health")
+# --------------------------------------------------
+# INCLUDE ROUTERS
+# --------------------------------------------------
+app.include_router(get_router, prefix=API_PREFIX, tags=["Get"])
+app.include_router(list_router, prefix=API_PREFIX, tags=["List"])
+app.include_router(fields_router, prefix=API_PREFIX, tags=["Fields"])
+app.include_router(update_router, prefix=API_PREFIX, tags=["Update"])
+app.include_router(delete_router, prefix=API_PREFIX, tags=["Delete"])
+app.include_router(template_router, prefix=API_PREFIX, tags=["Template"])
+
+# --------------------------------------------------
+# SYSTEM / HEALTH ENDPOINTS
+# --------------------------------------------------
+@app.get("/health", tags=["System"])
 def health():
-    """Health check endpoint for readiness probes."""
     return {"status": "ok"}
 
-@app.get("/")
+@app.get("/", tags=["System"])
 def root():
-    return {"status": "ok"}
+    return {
+        "service": "Bitrix Manager Backend",
+        "version": "1.0.0",
+        "api_base": API_PREFIX
+    }
 
-# ---------------------- ENDPOINTS (Legacy - now in individual modules) -------------------------------
-# All endpoints have been moved to modular files:
-# - get.py: GET endpoints for retrieving items
-# - list.py: LIST endpoints for fetching multiple items
-# - fields.py: FIELDS endpoints for field definitions
-# - update.py: UPDATE endpoints for modifying items
-# - delete.py: DELETE endpoints for removing items
-# - template.py: TEMPLATE endpoints for downloading Excel templates
-
+# --------------------------------------------------
+# LOCAL DEV ENTRYPOINT
+# --------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
+    uvicorn.run(
+        "backend.main:app",  # must be full path for Render & local
+        host="0.0.0.0",      # 0.0.0.0 so Render can expose it
+        port=int(os.environ.get("PORT", 8000)),  # Render sets PORT dynamically
+        reload=True
+    )
