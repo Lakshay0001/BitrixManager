@@ -33,6 +33,12 @@ export default function UsersPage() {
 
         try {
             const url = apiBuildUrl("/users/search", { base, search: query || undefined, active: activeOnly });
+            console.log("Fetching users from:", url);
+            console.log("API_BASE:", process.env.NEXT_PUBLIC_API_BASE)
+            fetch(url)
+                .then(res => res.json())
+                .then(console.log)
+                .catch(console.error);
             const res = await fetch(url);
             const json = await res.json();
 
@@ -255,10 +261,10 @@ export default function UsersPage() {
                                                 {u.gender && (
                                                     <div
                                                         className={`px-3 py-1 rounded-full text-sm ${u.gender === "M"
-                                                                ? "bg-blue-400/10 border border-blue-400 text-blue-400"
-                                                                : u.gender === "F"
-                                                                    ? "bg-pink-400/10 border border-pink-400 text-pink-400"
-                                                                    : ""
+                                                            ? "bg-blue-400/10 border border-blue-400 text-blue-400"
+                                                            : u.gender === "F"
+                                                                ? "bg-pink-400/10 border border-pink-400 text-pink-400"
+                                                                : ""
                                                             }`}
                                                     >
                                                         {u.gender === "M" ? "Male" : u.gender === "F" ? "Female" : ""}
