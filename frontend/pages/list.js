@@ -82,10 +82,20 @@ export default function ListPage() {
     fetch(apiBuildUrl(`/fields/${entity}`, { base }))
       .then(r => r.json())
       .then(j => {
-        const opts = (j.code_to_label ? Object.entries(j.code_to_label).map(([code, label]) => ({ code, label })) : []);
+        console.log("FIELDS RESPONSE:", j);
+
+        const data = j.result || {};
+
+        const opts = data.code_to_label
+          ? Object.entries(data.code_to_label).map(([code, label]) => ({
+            code,
+            label: label || code
+          }))
+          : [];
+
         setAllFields(opts);
-        setFieldMap(j.code_to_label || {});
-        setEnumsMap(j.enums || {});
+        setFieldMap(data.code_to_label || {});
+        setEnumsMap(data.enums || {});
 
         const initialSelected = defaultFieldsMap[entity]
           .map(code => opts.find(f => f.code === code) || { code, label: code })
@@ -104,23 +114,29 @@ export default function ListPage() {
     }
   };
 
-  // Fetch list
   const fetchList = async () => {
     if (!base) return alert("Enter base webhook URL");
     if (!selectedFields.length) return alert("Select at least one field");
 
-    const params = { base, select: selectedFields.join(',') };
+    const params = {
+      base,
+      select: selectedFields.join(',')
+    };
+
     if (fromDate) params.from_created = fromDate;
     if (toDate) params.to_created = toDate;
 
-    const url = apiBuildUrl(`/fields/${entity}`, { base });
+    const url = apiBuildUrl(`/list/${entity}`, params); // ✅ FIX
 
     try {
       setLoadingMessage("Fetching data...");
       setLoading(true);
+
       const r = await fetch(url);
       const j = await r.json();
-      setRows(j.result || []);
+
+      // extra safety
+      setRows(Array.isArray(j.result) ? j.result : []);
     } catch (e) {
       alert(`Error: ${e.message}`);
     } finally {
