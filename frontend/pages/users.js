@@ -114,12 +114,12 @@ export default function UsersPage() {
 
     return (
         <Layout>
-            <div className="p-6 max-w-7xl mx-auto space-y-6">
+            <div className="p-6 max-w-6xl mx-auto space-y-6">
                 <h1 className="text-2xl font-bold mb-2">Users Manager</h1>
 
                 {/* Top Glass: Base + Fetch */}
                 <div className="glass p-4 flex flex-col gap-4 items-start">
-                    <div className="flex flex-row md:flex-row gap-3 flex-1 w-full">
+                    <div className="flex flex-col md:flex-row gap-3 flex-1 w-full">
                         <input
                             value={base}
                             onChange={e => setBase(e.target.value)}
@@ -131,7 +131,7 @@ export default function UsersPage() {
                                 fetchUsers(search);
                                 setHasFetched(true); // mark that we have fetched at least once
                             }}
-                            className="btn"
+                            className="btn w-full sm:w-auto"
                         >
                             {loading ? "Loading..." : "Fetch Users"}
                         </button>
@@ -147,18 +147,18 @@ export default function UsersPage() {
                         <>
                             {/* Top Row: Search + Download CSV + View Toggle */}
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                                <div className="flex flex-col md:flex-row gap-2 items-start md:items-center flex-1">
+                                <div className="flex flex-col md:flex-row gap-3 items-start md:items-center flex-1 w-full">
                                     <input
                                         value={search}
                                         onChange={e => setSearch(e.target.value)}
                                         placeholder="Search by Name"
-                                        className="p-2 rounded bg-white/5 border border-white/20 min-w-[200px] md:w-1/3"
+                                        className="p-2 rounded bg-white/5 border border-white/20 min-w-[200px] w-full md:w-1/3"
                                     />
                                     <button
                                         onClick={() => downloadCSV(users, "users.csv")}
-                                        className="btn"
+                                        className="btn w-full sm:w-auto"
                                     >
-                                        Download CSV
+                                        ⤓ CSV
                                     </button>
                                 </div>
 
@@ -181,7 +181,7 @@ export default function UsersPage() {
 
                             {/* Filter Buttons */}
                             {filteredUsers.length > 0 && (
-                                <div className="flex flex-row gap-3 items-start mt-2">
+                                <div className="flex flex-row gap-3 items-start">
                                     <button
                                         className={`px-4 py-2 rounded transition ${filter === "active" ? "btn" : "glass text-white/70 hover:text-white"}`}
                                         onClick={() => setFilter("active")}
@@ -200,7 +200,7 @@ export default function UsersPage() {
                     )}
 
                     {/* No users found */}
-                    {hasFetched && filteredUsers.length === 0 && !loading && (
+                    {filteredUsers.length === 0 && !loading && (
                         <p className="text-sm text-gray-400">No users found</p>
                     )}
 
@@ -243,16 +243,18 @@ export default function UsersPage() {
                     )}
 
                     {filteredUsers.length > 0 && viewMode === "card" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                             {filteredUsers.map(u => (
                                 <div key={u.id} className="glass p-4 flex flex-col rounded-lg shadow-md hover:scale-105 transition-transform duration-200">
-                                    <div className="flex flex-row gap-4 mb-4">
+                                    <div className="flex flex-row mb-4">
+                                        <div className="w-1/3">
                                         {u.photo ? (
-                                            <img src={u.photo} alt={u.name} className="w-20 h-20 rounded-full mb-2" />
+                                            <img src={u.photo} alt={u.name} className="w-16 h-16 md:w-20 md:h-20 rounded-full mb-2" />
                                         ) : (
-                                            <div className="w-20 h-20 rounded-full bg-gray-700 mb-2 flex items-center justify-center text-gray-400"></div>
+                                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-700 mb-2 flex items-center justify-center text-gray-400"></div>
                                         )}
-                                        <div>
+                                        </div>
+                                        <div className="w-2/3">
                                             <h2 className="font-bold text-lg text-white mb-2">{u.name} {u.last_name}</h2>
                                             {/* Chips */}
                                             <div className="flex flex-wrap gap-2 mb-3">
@@ -273,10 +275,10 @@ export default function UsersPage() {
 
                                             </div>
                                             <div className="flex flex-col gap-1 text-gray-300 text-sm">
-                                                {u.email && <div className="flex items-center gap-2"><span>✉️</span>{u.email}</div>}
-                                                {u.mobile && <div className="flex items-center gap-2"><span>📱</span>{u.mobile}</div>}
-                                                {u.work_phone && <div className="flex items-center gap-2"><span>☎️</span>{u.work_phone}</div>}
-                                                {(u.department || []).length > 0 && <div className="flex items-center gap-2"><span>🏢</span>{u.department.join(", ")}</div>}
+                                                {u.email && <div className="flex items-center gap-2">{u.email}</div>}
+                                                {u.mobile && <div className="flex items-center gap-2">{u.mobile}</div>}
+                                                {u.work_phone && <div className="flex items-center gap-2">{u.work_phone}</div>}
+                                                {(u.department || []).length > 0 && <div className="flex items-center gap-2">{u.department.join(", ")}</div>}
                                             </div>
                                         </div>
                                     </div>

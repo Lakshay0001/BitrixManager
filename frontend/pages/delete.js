@@ -509,7 +509,7 @@ export default function DeletePage() {
               {/* ⭐️ END FILE UPLOAD SECTION ⭐️ */}
 
 
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-0 sm:mt-2">
                 <button onClick={() => { if (rows.length) setRows([]); setSelectedIds(new Set()); }} className="btn w-full sm:w-auto">Clear Preview</button>
               </div>
 

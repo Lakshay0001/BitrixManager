@@ -186,7 +186,7 @@ export default function FieldsPage() {
                         className="p-2 rounded bg-white/5 w-full mb-3"
                     />
 
-                    <button onClick={fetchFields} className="btn">
+                    <button onClick={fetchFields} className="btn w-full sm:w-auto">
                         {loading ? "Loading..." : "Fetch Fields"}
                     </button>
                 </div>
@@ -195,14 +195,14 @@ export default function FieldsPage() {
                 {fields.length > 0 && (
                     <div className="glass p-4 mb-6">
 
-                        <div className="flex justify-between items-center mb-3">
+                        <div className="flex flex-col md:flex-row justify-between items-start mb-3">
                             <h2 className="text-xl font-semibold">All Fields ({fields.length})</h2>
-
+                            <div className="flex gap-3 justify-end mt-4 md:mt-0">
                             <button
                                 onClick={() => downloadCSV(fields, `all_fields_${entity}.csv`)}
                                 className="btn"
                             >
-                                Download CSV
+                                ⤓ CSV
                             </button>
                             <button
                                 onClick={() => duplicatesRef.current?.scrollIntoView({ behavior: "smooth" })}
@@ -210,6 +210,7 @@ export default function FieldsPage() {
                             >
                                 Go to Duplicates
                             </button>
+                            </div>
                         </div>
 
                         <table className="w-full text-sm table-fixed">

@@ -402,7 +402,7 @@ export default function GetPage() {
               {/* ⭐️ END FILE UPLOAD SECTION ⭐️ */}
 
               {/* 4. Download/Copy Buttons: Added flex-wrap and w-full/sm:w-auto for responsiveness */}
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-0 sm:mt-3">
                 <button onClick={downloadCSV} className="btn w-full sm:w-auto">⤓ CSV</button>
                 <button onClick={copyJSON} className="btn w-full sm:w-auto">⧉ JSON</button>
               </div>

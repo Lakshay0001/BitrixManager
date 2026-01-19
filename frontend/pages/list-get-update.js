@@ -421,7 +421,7 @@ export default function ManagePage() {
     } catch (e) {
       alert(String(e));
       setListRows([]);
-    } finally { 
+    } finally {
       setListLoading(false);
       setLoadingMessage('Loading...');
     }
@@ -452,7 +452,7 @@ export default function ManagePage() {
       });
     } catch (e) {
       alert(String(e));
-    } finally { 
+    } finally {
       setGetLoading(false);
       setLoadingMessage('Loading...');
     }
@@ -487,7 +487,7 @@ export default function ManagePage() {
       console.log("🚩 Get All Final Processed Data:", detailedResults);
     } catch (e) {
       alert("Error in Get All operation: " + String(e));
-    } finally { 
+    } finally {
       setGetLoading(false);
       setLoadingMessage('Loading...');
     }
@@ -498,66 +498,66 @@ export default function ManagePage() {
   // =================================================================
 
   // Function to add a record to update queue (called by the UI buttons)
-function addToUpdate(row) {
-  const cardId = `card_${row.ID}`;
+  function addToUpdate(row) {
+    const cardId = `card_${row.ID}`;
 
-  const card = {
-    cardId,
-    recordId: String(row.ID),
-    recordLabel: row.TITLE || row.NAME || String(row.ID),
-    fields: [
-      {
-        rowId: `${cardId}_0`,
-        code: "",
-        label: "",
-        newValue: "",
-        isMultiple: false,
-        oldValue: ""
-      }
-    ]
-  };
+    const card = {
+      cardId,
+      recordId: String(row.ID),
+      recordLabel: row.TITLE || row.NAME || String(row.ID),
+      fields: [
+        {
+          rowId: `${cardId}_0`,
+          code: "",
+          label: "",
+          newValue: "",
+          isMultiple: false,
+          oldValue: ""
+        }
+      ]
+    };
 
-  setCards(prev => {
-    if (prev.some(c => c.cardId === cardId)) return prev;
-    return [...prev, card];
-  });
-}
+    setCards(prev => {
+      if (prev.some(c => c.cardId === cardId)) return prev;
+      return [...prev, card];
+    });
+  }
 
 
   async function handleUpdateFromList(row) {
-  if (!base || !row.ID) return alert("Invalid record");
+    if (!base || !row.ID) return alert("Invalid record");
 
-  setGetLoading(true);
+    setGetLoading(true);
 
-  try {
-    const url = buildUrl("/get/single", {
-      entity,
-      item_id: row.ID,
-      base,
-    });
+    try {
+      const url = buildUrl("/get/single", {
+        entity,
+        item_id: row.ID,
+        base,
+      });
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Status ${res.status}`);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
 
-    const json = await res.json();
-    const record = json.result || json;
+      const json = await res.json();
+      const record = json.result || json;
 
-    // 1️⃣ ensure record is in getRows
-    setGetRows((prev) => {
-      const exists = prev.some((r) => String(r.ID) === String(record.ID));
-      if (exists) return prev.map(r => String(r.ID) === String(record.ID) ? record : r);
-      return [...prev, record];
-    });
+      // 1️⃣ ensure record is in getRows
+      setGetRows((prev) => {
+        const exists = prev.some((r) => String(r.ID) === String(record.ID));
+        if (exists) return prev.map(r => String(r.ID) === String(record.ID) ? record : r);
+        return [...prev, record];
+      });
 
-    // 2️⃣ now safely add to update
-    addToUpdate(record);
+      // 2️⃣ now safely add to update
+      addToUpdate(record);
 
-  } catch (e) {
-    alert("Failed to fetch record before update: " + e.message);
-  } finally {
-    setGetLoading(false);
+    } catch (e) {
+      alert("Failed to fetch record before update: " + e.message);
+    } finally {
+      setGetLoading(false);
+    }
   }
-}
 
 
   // Send all fetched records to the update queue
@@ -569,44 +569,44 @@ function addToUpdate(row) {
   }
 
   // CARD helpers: For adding/removing fields in the UI
-function addFieldRow(cardId) {
-  setCards(prev =>
-    prev.map(c => {
-      if (c.cardId !== cardId) return c;
+  function addFieldRow(cardId) {
+    setCards(prev =>
+      prev.map(c => {
+        if (c.cardId !== cardId) return c;
 
-      const nextIndex = c.fields.length;
+        const nextIndex = c.fields.length;
 
-      return {
-        ...c,
-        fields: [
-          ...c.fields,
-          {
-            rowId: `${cardId}_${nextIndex}`,
-            code: "",
-            label: "",
-            newValue: "",
-            isMultiple: false,
-            oldValue: ""
-          }
-        ]
-      };
-    })
-  );
-}
+        return {
+          ...c,
+          fields: [
+            ...c.fields,
+            {
+              rowId: `${cardId}_${nextIndex}`,
+              code: "",
+              label: "",
+              newValue: "",
+              isMultiple: false,
+              oldValue: ""
+            }
+          ]
+        };
+      })
+    );
+  }
 
 
-function removeFieldRow(cardId, rowId) {
-  setCards(prev =>
-    prev.map(c => {
-      if (c.cardId !== cardId) return c;
+  function removeFieldRow(cardId, rowId) {
+    setCards(prev =>
+      prev.map(c => {
+        if (c.cardId !== cardId) return c;
 
-      const newFields = c.fields.filter(f => f.rowId !== rowId);
+        const newFields = c.fields.filter(f => f.rowId !== rowId);
 
-      return {
-        ...c,
-        fields: newFields.length
-          ? newFields
-          : [
+        return {
+          ...c,
+          fields: newFields.length
+            ? newFields
+            : [
               {
                 rowId: `${cardId}_0`,
                 code: "",
@@ -616,10 +616,10 @@ function removeFieldRow(cardId, rowId) {
                 oldValue: ""
               }
             ]
-      };
-    })
-  );
-}
+        };
+      })
+    );
+  }
 
 
   function setFieldRowCode(cardId, rowId, code) {
@@ -640,12 +640,12 @@ function removeFieldRow(cardId, rowId) {
     }));
   }
 
-function setFieldRowNewValue(cardId, rowId, val) {
-  setCards(prev =>
-    prev.map(c =>
-      c.cardId !== cardId
-        ? c
-        : {
+  function setFieldRowNewValue(cardId, rowId, val) {
+    setCards(prev =>
+      prev.map(c =>
+        c.cardId !== cardId
+          ? c
+          : {
             ...c,
             fields: c.fields.map(f =>
               f.rowId === rowId
@@ -653,9 +653,9 @@ function setFieldRowNewValue(cardId, rowId, val) {
                 : f
             )
           }
-    )
-  );
-}
+      )
+    );
+  }
 
 
   // perform bulk update
@@ -707,7 +707,7 @@ function setFieldRowNewValue(cardId, rowId, val) {
         };
 
         const hasError = j && typeof j === 'object' && j.error;
-        const hasResult = j && ( (typeof j === 'object' && j.result !== undefined) || j === true );
+        const hasResult = j && ((typeof j === 'object' && j.result !== undefined) || j === true);
         const summaryMsg = hasError ? (j.error_description || j.error) : (j && j.result !== undefined ? pretty(j.result) : pretty(j));
 
         // Log the result for each field update in the summary
@@ -1015,7 +1015,7 @@ function setFieldRowNewValue(cardId, rowId, val) {
     if (isUserType) {
       const [allUsers, setAllUsers] = useState([]);
       const [userLoading, setUserLoading] = useState(false);
-      
+
       useEffect(() => {
         if (allUsers.length === 0 && !userLoading) {
           setUserLoading(true);
@@ -1028,10 +1028,10 @@ function setFieldRowNewValue(cardId, rowId, val) {
             .finally(() => setUserLoading(false));
         }
       }, []);
-      
+
       // Check if field allows multiple selection
       const isMultiUser = isMulti;
-      
+
       return (
         <DropdownSelect
           options={allUsers}
@@ -1100,7 +1100,7 @@ function setFieldRowNewValue(cardId, rowId, val) {
     // Handle Date/Datetime with local state + onBlur
     if (inputType === 'date' || inputType === 'datetime-local') {
       const [localValue, setLocalValue] = useState(inputType === 'datetime-local' ? formatDatetimeLocal(currentValue) : currentValue);
-      
+
       useEffect(() => {
         setLocalValue(inputType === 'datetime-local' ? formatDatetimeLocal(currentValue) : currentValue);
       }, [currentValue, inputType]);
@@ -1119,7 +1119,7 @@ function setFieldRowNewValue(cardId, rowId, val) {
     // Handle Number with local state + onBlur
     if (inputType === 'number') {
       const [localValue, setLocalValue] = useState(currentValue ?? "");
-      
+
       useEffect(() => {
         setLocalValue(currentValue ?? "");
       }, [currentValue]);
@@ -1166,164 +1166,269 @@ function setFieldRowNewValue(cardId, rowId, val) {
     <>
       {(listLoading || getLoading || updateLoading) && <LoadingSpinner message={loadingMessage} />}
       <Layout>
-      <div className="min-h-screen p-4 sm:p-6 md:p-10 space-y-6">
-        {/* ---- List Glass ---- */}
-        {/* ... (List Glass component remains mostly unchanged) ... */}
-        <div className="glass p-6">
-          <h3 className="font-semibold mb-3">List Records</h3>
+        <div className="minp-6 max-w-6xl mx-auto space-y-6 -h-screen p-4 sm:p-6 md:p-10 space-y-6">
+          {/* ---- List Glass ---- */}
+          {/* ... (List Glass component remains mostly unchanged) ... */}
+          <div className="glass p-6">
+            <h3 className="font-semibold mb-3">List Records</h3>
 
-          {/* Base URL Input */}
-          <div className="mb-3">
-            <input
-              type="text"
-              value={base}
-              onChange={(e) => setBase(e.target.value)}
-              placeholder="Enter base webhook URL"
-              className="p-2 rounded w-full bg-white/5"
-            />
-          </div>
+            {/* Base URL Input */}
+            <div className="mb-3">
+              <input
+                type="text"
+                value={base}
+                onChange={(e) => setBase(e.target.value)}
+                placeholder="Enter base webhook URL"
+                className="p-2 rounded w-full bg-white/5"
+              />
+            </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <button
-              onClick={() => handleEntityChange("lead")}
-              className={`py-2 px-4 rounded ${entity === "lead" ? "btn" : "bg-white/10"}`}
-            >
-              Lead
-            </button>
-            <button
-              onClick={() => handleEntityChange("deal")}
-              className={`py-2 px-4 rounded ${entity === "deal" ? "btn" : "bg-white/10"}`}
-            >
-              Deal
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 items-center mb-3">
-            <div className="flex gap-2 items-center">
-              <span className="text-sm">Filter by:</span>
+            <div className="flex flex-row gap-2 mb-3">
               <button
-                onClick={() => setFilterType("created")}
-                className={`px-3 py-1 rounded ${filterType === "created" ? "btn" : "bg-white/10"}`}
+                onClick={() => handleEntityChange("lead")}
+                className={`py-2 px-4 rounded ${entity === "lead" ? "btn" : "bg-white/10"}`}
               >
-                Created
+                Lead
               </button>
               <button
-                onClick={() => setFilterType("modified")}
-                className={`px-3 py-1 rounded ${filterType === "modified" ? "btn" : "bg-white/10"}`}
+                onClick={() => handleEntityChange("deal")}
+                className={`py-2 px-4 rounded ${entity === "deal" ? "btn" : "bg-white/10"}`}
               >
-                Modified
+                Deal
               </button>
             </div>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="p-2 rounded bg-white/5"
-            />
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              className="p-2 rounded bg-white/5"
-            />
-            <button onClick={fetchList} className="btn" disabled={listLoading}>
-              {listLoading ? "Fetching..." : "Fetch List"}
-            </button>
-          </div>
 
-          {/* New Field Select/Download Buttons */}
-          <div className="flex flex-wrap gap-2 mt-3 mb-3">
-            <button onClick={() => setShowFieldModal(true)} className="btn w-full sm:w-auto">Select Fields</button>
-            <button
-              onClick={() => downloadCSV(listRows, "list.csv")}
-              className='btn w-full sm:w-auto'
-            >
-              ⤓ CSV
-            </button>
-          </div>
-
-
-          {listRows.length > 0 && (
-            <>
-              {/* Selected fields chips */}
-              <div className='flex flex-wrap gap-2 mb-3'>
-                {selectedFields.map(f => (
-                  <div key={f} className='bg-white/10 px-3 py-1 rounded-full text-sm whitespace-nowrap'>
-                    {formatLabel(fieldMap[f] || f)}
-                  </div>
-                ))}
-              </div>
-
-              <div ref={listTableRef} className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
-                <table className="min-w-full bg-white/5 rounded">
-                  <thead className="bg-white/6">
-                    <tr>
-                      <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Sr. No</th>
-                      <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Actions</th>
-                      {selectedFields.map(f => (
-                        <th key={f} className='px-3 py-2 text-left whitespace-nowrap text-sm'>
-                          {formatLabel(fieldMap[f] || f)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listRows.map((r, i) => (
-                      <tr key={i} className="hover:bg-white/3 text-sm">
-                        <td className="px-3 py-2 align-top whitespace-nowrap">{i + 1}</td>
-                        <td className="px-3 py-2 flex gap-2 align-top whitespace-nowrap">
-                          <button onClick={() => fetchGetRow(r)} className="btn text-xs">Get</button>
-                          <button
-                            onClick={() => handleUpdateFromList(r)}
-                            disabled={getLoading}
-                            className="btn text-xs"
-                          >
-                            {getLoading ? "Loading..." : "Update"}
-                          </button>
-
-                        </td>
-                        {selectedFields.map(f => (
-                          <td key={f} className='px-3 py-2 align-top whitespace-nowrap'>
-                            {renderListCellValue(r[f], f) || '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    )
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex gap-2 mt-2">
-                <button onClick={fetchGetAll} className="btn" disabled={getLoading}>
-                  {getLoading ? "Fetching..." : "Get All"}
+            <div className="flex flex-col sm:flex-row gap-2 mb-3 w-full">
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={() => setFilterType("created")}
+                  className={`px-3 py-1 rounded ${filterType === "created" ? "btn" : "bg-white/10"}`}
+                >
+                  Created
+                </button>
+                <button
+                  onClick={() => setFilterType("modified")}
+                  className={`px-3 py-1 rounded ${filterType === "modified" ? "btn" : "bg-white/10"}`}
+                >
+                  Modified
                 </button>
               </div>
-            </>
-          )}
+              <div className="flex flex-row gap-3 w-full">
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="p-2 rounded bg-white/5 w-1/2 sm:w-auto"
+                />
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="p-2 rounded bg-white/5 w-1/2 sm:w-auto"
+                />
+              </div>
+            </div>
 
-
-        </div>
-
-        {/* ---- Get Glass ---- */}
-        {/* ... (Get Glass component remains unchanged) ... */}
-        <div className="glass p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Get Records ({getRows.length})</h3>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setHorizontalView(true)}
-                className={`px-3 py-1 rounded text-sm ${horizontalView ? "btn" : "bg-white/10 hover:bg-white/20"}`}
-              >
-                Horizontal
+            {/* New Field Select/Download Buttons */}
+            <div className="flex flex-wrap gap-2 mt-3 mb-3">
+              <button onClick={fetchList} className="btn w-full sm:w-auto" disabled={listLoading}>
+                {listLoading ? "Fetching..." : "Fetch List"}
               </button>
+              <button onClick={() => setShowFieldModal(true)} className="btn w-full sm:w-auto">Select Fields</button>
               <button
-                onClick={() => setHorizontalView(false)}
-                className={`px-3 py-1 rounded text-sm ${!horizontalView ? "btn" : "bg-white/10 hover:bg-white/20"}`}
+                onClick={() => downloadCSV(listRows, "list.csv")}
+                className='btn w-full sm:w-auto'
               >
-                Vertical
+                ⤓ CSV
               </button>
+            </div>
+
+
+            {listRows.length > 0 && (
+              <>
+                {/* Selected fields chips */}
+                <div className='flex flex-wrap gap-2 mb-3'>
+                  {selectedFields.map(f => (
+                    <div key={f} className='bg-white/10 px-3 py-1 rounded-full text-sm whitespace-nowrap'>
+                      {formatLabel(fieldMap[f] || f)}
+                    </div>
+                  ))}
+                </div>
+
+                <div ref={listTableRef} className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+                  <table className="min-w-full bg-white/5 rounded">
+                    <thead className="bg-white/6">
+                      <tr>
+                        <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Sr. No</th>
+                        <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Actions</th>
+                        {selectedFields.map(f => (
+                          <th key={f} className='px-3 py-2 text-left whitespace-nowrap text-sm'>
+                            {formatLabel(fieldMap[f] || f)}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {listRows.map((r, i) => (
+                        <tr key={i} className="hover:bg-white/3 text-sm">
+                          <td className="px-3 py-2 align-top whitespace-nowrap">{i + 1}</td>
+                          <td className="px-3 py-2 flex gap-2 align-top whitespace-nowrap">
+                            <button onClick={() => fetchGetRow(r)} className="btn text-xs">Get</button>
+                            <button
+                              onClick={() => handleUpdateFromList(r)}
+                              disabled={getLoading}
+                              className="btn text-xs"
+                            >
+                              {getLoading ? "Loading..." : "Update"}
+                            </button>
+
+                          </td>
+                          {selectedFields.map(f => (
+                            <td key={f} className='px-3 py-2 align-top whitespace-nowrap'>
+                              {renderListCellValue(r[f], f) || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex gap-2 mt-2">
+                  <button onClick={fetchGetAll} className="btn" disabled={getLoading}>
+                    {getLoading ? "Fetching..." : "Get All"}
+                  </button>
+                </div>
+              </>
+            )}
+
+
+          </div>
+
+          {/* ---- Get Glass ---- */}
+          {/* ... (Get Glass component remains unchanged) ... */}
+          <div className="glass p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Get Records ({getRows.length})</h3>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setHorizontalView(true)}
+                  className={`px-3 py-1 rounded text-sm ${horizontalView ? "btn" : "bg-white/10 hover:bg-white/20"}`}
+                >
+                  Horizontal
+                </button>
+                <button
+                  onClick={() => setHorizontalView(false)}
+                  className={`px-3 py-1 rounded text-sm ${!horizontalView ? "btn" : "bg-white/10 hover:bg-white/20"}`}
+                >
+                  Vertical
+                </button>
+              </div>
+            </div>
+
+            {getRows.length === 0 ? (
+              <p className="text-white/50">Use the Filter/Search section to fetch records first.</p>
+            ) : horizontalView ? (
+              // Horizontal View (Table structure)
+              <>
+                <div className="flex justify-end mb-2 gap-2">
+                  <button
+                    onClick={() => tableRef.current?.scrollBy({ left: -300, behavior: "smooth" })}
+                    className="px-3 py-1 text-white rounded bg-white/10 hover:bg-white/20 transition"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={() => tableRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
+                    className="px-3 py-1 text-white rounded bg-white/10 hover:bg-white/20 transition"
+                  >
+                    ▶
+                  </button>
+                </div>
+
+                <div
+                  ref={tableRef}
+                  className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10"
+                >
+                  <table className="min-w-full bg-white/5 rounded">
+                    <thead className="bg-white/6">
+                      <tr>
+                        <th className="px-3 py-2 text-left whitespace-nowrap">Sr. No</th>
+                        {getRows.length > 0 && Object.keys(getRows[0]).map((k) => (
+                          <th key={k} className="px-3 py-2 text-left whitespace-nowrap text-sm">
+                            {formatLabel(fieldMap[k] || k)}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getRows.map((r, i) => (
+                        <tr key={r.ID || i} className="hover:bg-white/3">
+                          <td className="px-3 py-2 align-top whitespace-nowrap">{i + 1}</td>
+                          {getRows.length > 0 && Object.keys(getRows[0]).map((k) => (
+                            <td key={k} className="px-3 py-2 align-top whitespace-nowrap text-sm">
+                              {renderGetCellValue(r[k], k)}
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 align-top whitespace-nowrap">
+                            <button
+                              onClick={() => handleUpdateFromList(r)}
+                              disabled={getLoading}
+                              className="btn text-xs"
+                            >
+                              {getLoading ? "Loading..." : "Update"}
+                            </button>
+
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              // Vertical View (Expandable Cards)
+              <div className="grid gap-3">
+                {getRows.map((r, i) => (
+                  <ExpandableCard
+                    key={r.ID || i}
+                    header={
+                      <div className="text-sm text-white/70">
+                        {i + 1} — ID: <span className='font-bold'>{r.ID || ""}</span>
+                      </div>
+                    }
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {Object.entries(r)
+                        .filter(([k, v]) => v !== null && v !== undefined && String(v) !== "")
+                        .map(([k, v]) => (
+                          <div key={k} className="pb-2 border-b border-white/5 last:border-b-0">
+                            <div className="text-xs text-white/50 mb-1">
+                              {formatLabel(fieldMap[k] || k)}
+                            </div>
+                            <div className="text-sm break-words">
+                              {renderGetCellValue(v, k)}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {/* UPDATE BUTTON IN VERTICAL VIEW */}
+                    <button
+                      onClick={() => handleUpdateFromList(r)}
+                      disabled={getLoading}
+                      className="btn text-xs"
+                    >
+                      {getLoading ? "Loading..." : "Update"}
+                    </button>
+
+                  </ExpandableCard>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2 flex-col md:flex-row">
 
               <button onClick={() => downloadCSV(getRows, "get.csv")} className="btn">
                 ⤓ CSV
@@ -1340,392 +1445,290 @@ function setFieldRowNewValue(cardId, rowId, val) {
             </div>
           </div>
 
-          {getRows.length === 0 ? (
-            <p className="text-white/50">Use the Filter/Search section to fetch records first.</p>
-          ) : horizontalView ? (
-            // Horizontal View (Table structure)
-            <>
-              <div className="flex justify-end mb-2 gap-2">
-                <button
-                  onClick={() => tableRef.current?.scrollBy({ left: -300, behavior: "smooth" })}
-                  className="px-3 py-1 text-white rounded bg-white/10 hover:bg-white/20 transition"
-                >
-                  ◀
-                </button>
-                <button
-                  onClick={() => tableRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
-                  className="px-3 py-1 text-white rounded bg-white/10 hover:bg-white/20 transition"
-                >
-                  ▶
-                </button>
-              </div>
 
-              <div
-                ref={tableRef}
-                className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10"
-              >
-                <table className="min-w-full bg-white/5 rounded">
-                  <thead className="bg-white/6">
-                    <tr>
-                      <th className="px-3 py-2 text-left whitespace-nowrap">Sr. No</th>
-                      {getRows.length > 0 && Object.keys(getRows[0]).map((k) => (
-                        <th key={k} className="px-3 py-2 text-left whitespace-nowrap text-sm">
-                          {formatLabel(fieldMap[k] || k)}
-                        </th>
-                      ))}
-                      <th className="px-3 py-2 text-left whitespace-nowrap text-sm">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getRows.map((r, i) => (
-                      <tr key={r.ID || i} className="hover:bg-white/3">
-                        <td className="px-3 py-2 align-top whitespace-nowrap">{i + 1}</td>
-                        {getRows.length > 0 && Object.keys(getRows[0]).map((k) => (
-                          <td key={k} className="px-3 py-2 align-top whitespace-nowrap text-sm">
-                            {renderGetCellValue(r[k], k)}
-                          </td>
-                        ))}
-                        <td className="px-3 py-2 align-top whitespace-nowrap">
-                          <button
-                            onClick={() => handleUpdateFromList(r)}
-                            disabled={getLoading}
-                            className="btn text-xs"
-                          >
-                            {getLoading ? "Loading..." : "Update"}
-                          </button>
-
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            // Vertical View (Expandable Cards)
-            <div className="grid gap-3">
-              {getRows.map((r, i) => (
-                <ExpandableCard
-                  key={r.ID || i}
-                  header={
-                    <div className="text-sm text-white/70">
-                      {i + 1} — ID: <span className='font-bold'>{r.ID || ""}</span>
-                    </div>
-                  }
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {Object.entries(r)
-                      .filter(([k, v]) => v !== null && v !== undefined && String(v) !== "")
-                      .map(([k, v]) => (
-                        <div key={k} className="pb-2 border-b border-white/5 last:border-b-0">
-                          <div className="text-xs text-white/50 mb-1">
-                            {formatLabel(fieldMap[k] || k)}
-                          </div>
-                          <div className="text-sm break-words">
-                            {renderGetCellValue(v, k)}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                  {/* UPDATE BUTTON IN VERTICAL VIEW */}
-                  <button
-                    onClick={() => handleUpdateFromList(r)}
-                    disabled={getLoading}
-                    className="btn text-xs"
-                  >
-                    {getLoading ? "Loading..." : "Update"}
-                  </button>
-
-                </ExpandableCard>
-              ))}
+          {/* ---- Update Glass ---- */}
+          <div className="glass p-6 w-full mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Records to Update ({cards.length})</h3>
             </div>
-          )}
-        </div>
 
+            {/* Cards */}
+            <div className="grid gap-3">
+              {cards.length === 0 ? (
+                <div className="text-white/50 italic">No records loaded. Add records from the Get Records section.</div>
+              ) : (
+                cards.map((card) => {
+                  const record = getRows.find(
+                    (r) => String(r.ID) === String(card.recordId)
+                  );
 
-        {/* ---- Update Glass ---- */}
-        <div className="glass p-6 w-full mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Records to Update ({cards.length})</h3>
-          </div>
-
-          {/* Cards */}
-          <div className="grid gap-3">
-            {cards.length === 0 ? (
-              <div className="text-white/50 italic">No records loaded. Add records from the Get Records section.</div>
-            ) : (
-              cards.map((card) => {
-                const record = getRows.find(
-                  (r) => String(r.ID) === String(card.recordId)
-                );
-
-                return (
-                  <div key={card.cardId} className="p-3 rounded bg-white/5 border border-white/10 shadow-lg">
-                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                      <div>
-                        <strong>ID: {card.recordId}</strong>{" "}
-                        {card.recordLabel ? `— ${card.recordLabel}` : ""}
+                  return (
+                    <div key={card.cardId} className="p-3 rounded bg-white/5 border border-white/10 shadow-lg">
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+                        <div>
+                          <strong>ID: {card.recordId}</strong>{" "}
+                          {card.recordLabel ? `— ${card.recordLabel}` : ""}
+                        </div>
+                        <div className="text-sm text-white/50">
+                          Fields: {card.fields.length}
+                        </div>
                       </div>
-                      <div className="text-sm text-white/50">
-                        Fields: {card.fields.length}
+
+                      {/* New Header Row for Desktop View */}
+                      <div className="hidden md:grid md:grid-cols-12 gap-2 mb-2 text-xs text-white/50 font-medium pb-1">
+                        {/* 🔥 Width matched: 3-4-4-1 🔥 */}
+                        <div className="col-span-3">Field</div>
+                        <div className="col-span-4">Current Value</div>
+                        <div className="col-span-4">New Value</div>
+                        <div className="col-span-1 text-center">Actions</div>
                       </div>
-                    </div>
-
-                    {/* New Header Row for Desktop View */}
-                    <div className="hidden md:grid md:grid-cols-12 gap-2 mb-2 text-xs text-white/50 font-medium pb-1">
-                      {/* 🔥 Width matched: 3-4-4-1 🔥 */}
-                      <div className="col-span-3">Field</div>
-                      <div className="col-span-4">Current Value</div>
-                      <div className="col-span-4">New Value</div>
-                      <div className="col-span-1 text-center">Actions</div>
-                    </div>
 
 
-                    {/* field rows */}
-                    <div className="grid gap-3">
-                      {(card.fields || []).map((f) => (
-                        <div
-                          key={f.rowId}
-                          className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center text-sm border-b border-white/5 pb-3 last:border-b-0 last:pb-0"
-                        >
-                          {/* The main input area: Full width on mobile, 11/12 on tablet/desktop */}
-                          <div className="w-full md:col-span-11 grid grid-cols-1 md:grid-cols-12 gap-2 text-xs text-white/50 mb-1">
-                            {/* 1. FIELD PICKER (3/12) */}
-                            <div className="col-span-12 md:col-span-4">
-                              <div className="text-xs text-white/50 mb-1 md:hidden">Field</div> {/* Mobile Label */}
-                              <FieldSelectWithSearch
-                                cardId={card.cardId}
-                                rowId={f.rowId}
-                                allFields={allFields}
-                                currentCode={f.code}
-                                setFieldRowCode={setFieldRowCode}
-                              />
-                            </div>
+                      {/* field rows */}
+                      <div className="grid gap-3">
+                        {(card.fields || []).map((f) => (
+                          <div
+                            key={f.rowId}
+                            className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start md:items-center text-sm border-b border-white/5 pb-3 last:border-b-0 last:pb-0"
+                          >
+                            {/* The main input area: Full width on mobile, 11/12 on tablet/desktop */}
+                            <div className="w-full md:col-span-11 grid grid-cols-1 md:grid-cols-12 gap-2 text-xs text-white/50 mb-1">
+                              {/* 1. FIELD PICKER (3/12) */}
+                              <div className="col-span-12 md:col-span-4">
+                                <div className="text-xs text-white/50 mb-1 md:hidden">Field</div> {/* Mobile Label */}
+                                <FieldSelectWithSearch
+                                  cardId={card.cardId}
+                                  rowId={f.rowId}
+                                  allFields={allFields}
+                                  currentCode={f.code}
+                                  setFieldRowCode={setFieldRowCode}
+                                />
+                              </div>
 
-                            {/* 2. OLD VALUE (4/12) */}
-                            <div className="col-span-12 md:col-span-4">
-                              <div className="text-xs text-white/50 mb-1 md:hidden">Current Value</div> {/* Mobile Label */}
-                              <div className="w-full">
-                                {(() => {
-                                  const rawOld = record ? record[f.code] : f.oldValue;
-                                  // Prefer enum labels when possible
-                                  const oldLabel = (enumsListMap && enumsListMap[f.code])
-                                    ? getEnumLabel({ enumerations: enumsListMap[f.code], isMultiple: f.isMultiple }, rawOld)
-                                    : getOldValueForRecord(record, f.code);
+                              {/* 2. OLD VALUE (4/12) */}
+                              <div className="col-span-12 md:col-span-4">
+                                <div className="text-xs text-white/50 mb-1 md:hidden">Current Value</div> {/* Mobile Label */}
+                                <div className="w-full">
+                                  {(() => {
+                                    const rawOld = record ? record[f.code] : f.oldValue;
+                                    // Prefer enum labels when possible
+                                    const oldLabel = (enumsListMap && enumsListMap[f.code])
+                                      ? getEnumLabel({ enumerations: enumsListMap[f.code], isMultiple: f.isMultiple }, rawOld)
+                                      : getOldValueForRecord(record, f.code);
 
-                                  const display = (oldLabel && String(oldLabel).trim() !== "") ? oldLabel : "";
+                                    const display = (oldLabel && String(oldLabel).trim() !== "") ? oldLabel : "";
 
-                                  // compute rows for textarea: min 1, up to 8
-                                  const len = String(display || "").length;
-                                  const rows = Math.min(8, Math.max(1, Math.ceil(len / 60)));
+                                    // compute rows for textarea: min 1, up to 8
+                                    const len = String(display || "").length;
+                                    const rows = Math.min(8, Math.max(1, Math.ceil(len / 60)));
 
-                                  return (
-                                    display
-                                      ? <textarea readOnly rows={rows} className="p-2 rounded bg-white/10 w-full text-white/70 text-sm resize-y" value={display} />
-                                      : <div className="p-2 rounded bg-white/10 w-full text-white/70 text-sm"><span className="text-white/40 italic">Old Value</span></div>
-                                  );
-                                })()}
+                                    return (
+                                      display
+                                        ? <textarea readOnly rows={rows} className="p-2 rounded bg-white/10 w-full text-white/70 text-sm resize-y" value={display} />
+                                        : <div className="p-2 rounded bg-white/10 w-full text-white/70 text-sm"><span className="text-white/40 italic">Old Value</span></div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+
+
+                              {/* 3. NEW VALUE PICKER (4/12) */}
+                              <div className="col-span-12 md:col-span-4 flex gap-2 items-center">
+                                <div className="text-xs text-white/50 mb-1 md:hidden">New Value</div> {/* Mobile Label */}
+
+                                {f.code ? (
+                                  <DynamicNewValueInput
+                                    fieldCode={f.code}
+                                    currentValue={f.newValue}
+                                    onChange={(val) => setFieldRowNewValue(card.cardId, f.rowId, val)}
+                                    isMultiple={f.isMultiple}
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    disabled={true}
+                                    value=""
+                                    placeholder="Select Field First"
+                                    className="p-2 rounded bg-white/10 w-full text-white/50 border border-white/10 italic"
+                                  />
+                                )}
                               </div>
                             </div>
 
-
-                            {/* 3. NEW VALUE PICKER (4/12) */}
-                            <div className="col-span-12 md:col-span-4 flex gap-2 items-center">
-                              <div className="text-xs text-white/50 mb-1 md:hidden">New Value</div> {/* Mobile Label */}
-
-                              {f.code ? (
-                                <DynamicNewValueInput
-                                  fieldCode={f.code}
-                                  currentValue={f.newValue}
-                                  onChange={(val) => setFieldRowNewValue(card.cardId, f.rowId, val)}
-                                  isMultiple={f.isMultiple}
-                                />
-                              ) : (
-                                <input
-                                  type="text"
-                                  disabled={true}
-                                  value=""
-                                  placeholder="Select Field First"
-                                  className="p-2 rounded bg-white/10 w-full text-white/50 border border-white/10 italic"
-                                />
-                              )}
+                            {/* REMOVE & ADD BUTTONS: Full width on mobile, 1/12 on tablet/desktop */}
+                            <div className="w-full md:col-span-1 flex justify-end md:justify-center md:flex-col gap-2 text-xs text-white/50 mb-1">
+                              <button
+                                onClick={() =>
+                                  removeFieldRow(card.cardId, f.rowId)
+                                }
+                                className="px-2"
+                              >
+                                ❌
+                              </button>
+                              <button
+                                onClick={() => addFieldRow(card.cardId)}
+                                className="px-2"
+                              >
+                                ➕
+                              </button>
                             </div>
                           </div>
-
-                          {/* REMOVE & ADD BUTTONS: Full width on mobile, 1/12 on tablet/desktop */}
-                          <div className="w-full md:col-span-1 flex justify-end md:justify-center md:flex-col gap-2 text-xs text-white/50 mb-1">
-                            <button
-                              onClick={() =>
-                                removeFieldRow(card.cardId, f.rowId)
-                              }
-                              className="px-2"
-                            >
-                              ❌
-                            </button>
-                            <button
-                              onClick={() => addFieldRow(card.cardId)}
-                              className="px-2"
-                            >
-                              ➕
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  );
+                })
+              )}
+            </div>
 
 
-          {/* actions */}
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            {/* Full Width Button (Update All) */}
-            <button
-              onClick={doUpdateAll}
-              className="btn w-full sm:w-auto"
-              disabled={updateLoading || cards.length === 0}
-            >
-              {updateLoading ? "Updating..." : "Update All"}
-            </button>
-          </div>
-        </div>
-
-        {/* ---- Update Summary Glass ---- */}
-        {/* ... (Summary Glass component remains unchanged) ... */}
-        <div className="glass p-6 w-full mx-auto">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h4 className="font-semibold">Update Summary ({summary.length})</h4>
-            {/* Clear Summary Button */}
-            <div className="flex flex-col sm:flex-row gap-2 w-auto">
+            {/* actions */}
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              {/* Full Width Button (Update All) */}
               <button
-                onClick={() => setSummary([])}
-                className="btn w-auto"
+                onClick={doUpdateAll}
+                className="btn w-full sm:w-auto"
+                disabled={updateLoading || cards.length === 0}
               >
-                Clear Summary
+                {updateLoading ? "Updating..." : "Update All"}
               </button>
             </div>
           </div>
 
-          {/* summary */}
-          <div className="mt-6">
-
-            {summary.length === 0 ? <div className="text-white/50 italic">No updates yet</div> : (
-              <div className="grid gap-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
-                {summary.map((s, idx) => (
-                  <div key={`${s.id}-${idx}`} className="p-2 rounded flex flex-col gap-1" style={{ backgroundColor: s.status === 'ok' ? 'rgba(76, 175, 80, 0.1)' : s.status === 'error' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)' }}>
-                    {/* Top Row: ID and Label (full width, side-by-side) */}
-                    <div className="flex justify-between items-start text-sm flex-wrap">
-                      <div className="font-bold">ID: {s.id}</div>
-                      <div className="text-white/70 max-w-full overflow-hidden whitespace-nowrap overflow-ellipsis">
-                        {s.fieldLabel} ({s.fieldCode})
-                      </div>
-                    </div>
-                    {/* Middle Row: Old and New Value (full width, side-by-side) */}
-                    <div className="text-xs flex justify-between gap-4">
-                      <div className="text-white/70 overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.oldValue}>
-                        <strong className="text-white/90">Old:</strong> {s.oldValue}
-                      </div>
-                      <div className="overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.newValue}>
-                        <strong className="text-white/90">New:</strong> {s.newValue}
-                      </div>
-                    </div>
-                    {/* Bottom Row: Status and Message */}
-                    <div className="text-xs mt-1">
-                      <strong className={s.status === 'ok' ? 'text-green-400' : s.status === 'error' ? 'text-red-400' : 'text-yellow-400'}>
-                        {s.status.toUpperCase()}
-                      </strong> — {String(s.msg).slice(0, 150)}{String(s.msg).length > 150 ? '...' : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* actions */}
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            {/* Full Width Button (Summary CSV) */}
-            <button
-              onClick={downloadSummaryCSV}
-              className="btn w-full sm:w-auto"
-              disabled={summary.length === 0}
-            >
-              ⤓ Summary CSV
-            </button>
-          </div>
-        </div>
-
-        {/* Field Select Modal (Copied from list.js) */}
-        {showFieldModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-
-            <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 w-full max-w-4xl border border-white/20 shadow-xl max-h-[90vh] overflow-y-auto">
-
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">Select Fields</h3>
+          {/* ---- Update Summary Glass ---- */}
+          {/* ... (Summary Glass component remains unchanged) ... */}
+          <div className="glass p-6 w-full mx-auto">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h4 className="font-semibold">Update Summary ({summary.length})</h4>
+              {/* Clear Summary Button */}
+              <div className="flex flex-col sm:flex-row gap-2 w-auto">
                 <button
-                  onClick={() => setShowFieldModal(false)}
-                  className="text-xl text-white/70 hover:text-white transition"
+                  onClick={() => setSummary([])}
+                  className="btn w-auto"
                 >
-                  ✖
+                  Clear Summary
                 </button>
               </div>
+            </div>
 
-              {/* Search */}
-              <input
-                type="text"
-                placeholder="Search fields..."
-                value={fieldSearch}
-                onChange={(e) => setFieldSearch(e.target.value)}
-                className="w-full p-2 rounded-lg bg-white/20 text-white placeholder-white/60 mb-3 outline-none focus:ring-2 focus:ring-purple-400 transition"
-              />
+            {/* summary */}
+            <div className="mt-6">
 
-              {/* Field List */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
-                {filteredFields.map((f) => (
-                  <label
-                    key={f.code}
-                    className="flex items-center gap-2 p-1 rounded hover:bg-white/10 text-white cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedFields.includes(f.code)}
-                      onChange={() => toggleField(f.code)}
-                      className="accent-purple-500"
-                    />
-                    <span className="text-sm">{f.label}</span>
-                  </label>
-                ))}
-              </div>
+              {summary.length === 0 ? <div className="text-white/50 italic">No updates yet</div> : (
+                <div className="grid gap-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+                  {summary.map((s, idx) => (
+                    <div key={`${s.id}-${idx}`} className="p-2 rounded flex flex-col gap-1" style={{ backgroundColor: s.status === 'ok' ? 'rgba(76, 175, 80, 0.1)' : s.status === 'error' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)' }}>
+                      {/* Top Row: ID and Label (full width, side-by-side) */}
+                      <div className="flex justify-between items-start text-sm flex-wrap">
+                        <div className="font-bold">ID: {s.id}</div>
+                        <div className="text-white/70 max-w-full overflow-hidden whitespace-nowrap overflow-ellipsis">
+                          {s.fieldLabel} ({s.fieldCode})
+                        </div>
+                      </div>
+                      {/* Middle Row: Old and New Value (full width, side-by-side) */}
+                      <div className="text-xs flex justify-between gap-4">
+                        <div className="text-white/70 overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.oldValue}>
+                          <strong className="text-white/90">Old:</strong> {s.oldValue}
+                        </div>
+                        <div className="overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.newValue}>
+                          <strong className="text-white/90">New:</strong> {s.newValue}
+                        </div>
+                      </div>
+                      {/* Bottom Row: Status and Message */}
+                      <div className="text-xs mt-1">
+                        <strong className={s.status === 'ok' ? 'text-green-400' : s.status === 'error' ? 'text-red-400' : 'text-yellow-400'}>
+                          {s.status.toUpperCase()}
+                        </strong> — {String(s.msg).slice(0, 150)}{String(s.msg).length > 150 ? '...' : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-              {/* Footer Buttons */}
-              <div className="flex justify-between items-center mt-5">
+            {/* actions */}
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              {/* Full Width Button (Summary CSV) */}
+              <button
+                onClick={downloadSummaryCSV}
+                className="btn w-full sm:w-auto"
+                disabled={summary.length === 0}
+              >
+                ⤓ Summary CSV
+              </button>
+            </div>
+          </div>
 
-                <div className="flex flex-wrap gap-2">
+          {/* Field Select Modal (Copied from list.js) */}
+          {showFieldModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 w-full max-w-4xl border border-white/20 shadow-xl max-h-[90vh] overflow-y-auto">
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Select Fields</h3>
                   <button
-                    onClick={selectAll}
-                    className="btn w-full sm:w-auto"
+                    onClick={() => setShowFieldModal(false)}
+                    className="text-xl text-white/70 hover:text-white transition"
                   >
-                    Select All
-                  </button>
-
-                  <button
-                    onClick={deselectAll}
-                    className="btn w-full sm:w-auto"
-                  >
-                    Deselect All
+                    ✖
                   </button>
                 </div>
 
+                {/* Search */}
+                <input
+                  type="text"
+                  placeholder="Search fields..."
+                  value={fieldSearch}
+                  onChange={(e) => setFieldSearch(e.target.value)}
+                  className="w-full p-2 rounded-lg bg-white/20 text-white placeholder-white/60 mb-3 outline-none focus:ring-2 focus:ring-purple-400 transition"
+                />
+
+                {/* Field List */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+                  {filteredFields.map((f) => (
+                    <label
+                      key={f.code}
+                      className="flex items-center gap-2 p-1 rounded hover:bg-white/10 text-white cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedFields.includes(f.code)}
+                        onChange={() => toggleField(f.code)}
+                        className="accent-purple-500"
+                      />
+                      <span className="text-sm">{f.label}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex justify-between items-center mt-5">
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={selectAll}
+                      className="btn w-full sm:w-auto"
+                    >
+                      Select All
+                    </button>
+
+                    <button
+                      onClick={deselectAll}
+                      className="btn w-full sm:w-auto"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      </div>
-    </Layout>
+        </div>
+      </Layout>
     </>
   );
 }

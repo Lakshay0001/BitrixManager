@@ -222,18 +222,18 @@ export default function ListPage() {
                 <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center sm:justify-between">
 
                   {/* Date Inputs */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-row gap-3 w-full">
                     <input
                       type="date"
                       value={fromDate}
                       onChange={e => setFromDate(e.target.value)}
-                      className="p-2 rounded bg-white/5 border border-white/20 text-white w-50 sm:w-auto"
+                      className="p-2 rounded bg-white/5 border border-white/20 text-white w-1/2 sm:w-auto"
                     />
                     <input
                       type="date"
                       value={toDate}
                       onChange={e => setToDate(e.target.value)}
-                      className="p-2 rounded bg-white/5 border border-white/20 text-white w-50 sm:w-auto"
+                      className="p-2 rounded bg-white/5 border border-white/20 text-white w-1/2 sm:w-auto"
                     />
                   </div>
 
@@ -250,7 +250,7 @@ export default function ListPage() {
                 </div>
 
                 {/* Select/Download Buttons */}
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-0 sm:mt-3">
                   <button onClick={() => setShowFieldModal(true)} className="btn w-full sm:w-auto">Select Fields</button>
 
                   {/* Download CSV */}
