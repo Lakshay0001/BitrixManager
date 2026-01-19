@@ -5,7 +5,7 @@ import { WebhookContext } from "../context/WebhookContext";
 import ExpandableCard from "../components/ExpandableCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
-import { buildUrl } from "../lib/api";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
 
 
 // Utility function to format labels (e.g., SOURCE_ID -> Source Id)
@@ -318,7 +318,8 @@ export default function DeletePage() {
 
           const j = await res.json();
 
-          const ok = j?.result === true;
+          const ok = j?.result === true || j?.result?.get("deleted") > 0;
+
 
           out.push({
             id: String(id),
@@ -436,7 +437,7 @@ export default function DeletePage() {
                   <LoadingButton
                     loading={loading}
                     onClick={fetchSingle}
-                    className="w-full sm:w-auto"
+                    className="btn w-full sm:w-auto"
                   >
                     Fetch
                   </LoadingButton>

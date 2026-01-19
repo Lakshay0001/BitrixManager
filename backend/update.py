@@ -1,4 +1,3 @@
-# backend/update.py
 from fastapi import APIRouter, Query, HTTPException
 from typing import Dict, Any
 from .bitrix_wrapper import BitrixWrapper
@@ -6,6 +5,21 @@ from .bitrix_wrapper import BitrixWrapper
 router = APIRouter()
 
 
+# ---------------------
+# Single record fetch
+# ---------------------
+@router.get("/get/{entity}/{id}")
+def get_single(entity: str, id: int, base: str = Query(...)):
+    bx = BitrixWrapper(base)
+    row = bx.get_single(id, entity)
+    if not row:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return row
+
+
+# ---------------------
+# Update record
+# ---------------------
 @router.post("/update/{entity}/{item_id}")
 def update_item(
     entity: str,
@@ -13,13 +27,6 @@ def update_item(
     base: str = Query(...),
     payload: Dict[str, Any] = {}
 ):
-    """
-    Update an item for an entity.
-    - For deals, splits updates between deal and linked contact.
-    - Normalized response: 
-        {"success": True, "result": ...} on success
-        {"success": False, "error": "...", "error_description": "..."} on failure
-    """
     bx = BitrixWrapper(base)
     fields = payload.get("fields") if "fields" in payload else payload
 
@@ -70,3 +77,57 @@ def update_item(
         return _normalize(bx.update_single(item_id, entity, fields))
     except Exception as e:
         return {"success": False, "error": "exception", "error_description": str(e)}
+
+
+# ---------------------
+# NEW: Fetch fields metadata for frontend
+# ---------------------
+def normalize_enums(raw_enums: Dict[str, Any]):
+    dict_map = {}
+    list_map = {}
+    for field_code, enums in (raw_enums or {}).items():
+        if isinstance(enums, dict):
+            dict_map[field_code] = enums
+            list_map[field_code] = [{"ID": k, "VALUE": v} for k, v in enums.items()]
+        elif isinstance(enums, list):
+            dict_map[field_code] = {str(e["ID"]): e["VALUE"] for e in enums}
+            list_map[field_code] = enums
+        else:
+            dict_map[field_code] = {}
+            list_map[field_code] = []
+    return {"dict": dict_map, "list": list_map}
+
+
+@router.get("/fields/{entity}")
+def get_fields(entity: str, base: str = Query(...)):
+    bx = BitrixWrapper(base)
+    try:
+        meta = bx.get_fields(entity)
+        if not meta:
+            raise HTTPException(status_code=404, detail="Entity fields not found")
+
+        code_to_label = meta.get("code_to_label") or {}
+        code_to_type = meta.get("code_to_type") or {}
+        raw_enums = meta.get("enums") or {}
+        normalized = normalize_enums(raw_enums)
+
+        return {
+            "success": True,
+            "entity": entity,
+            "code_to_label": code_to_label,
+            "code_to_type": code_to_type,
+            "enums": normalized["dict"],
+            "enums_list": normalized["list"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch fields: {str(e)}")
+
+
+@router.get("/fields/{entity}/duplicates")
+def get_duplicate_fields(entity: str, base: str = Query(...)):
+    bx = BitrixWrapper(base)
+    try:
+        fields = bx.get_duplicate_fields(entity)
+        return {"success": True, "entity": entity, "result": fields or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch duplicate fields: {str(e)}")

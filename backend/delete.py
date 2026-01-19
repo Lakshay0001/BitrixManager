@@ -13,12 +13,14 @@ class DuplicateDeleteRequest(BaseModel):
 
 @router.post("/delete/{entity}/{item_id}")
 def delete_item(entity: str, item_id: str, base: str = Query(...)):
-    """Delete a single item for an entity."""
     bx = BitrixWrapper(base)
     ok, res = bx.delete_single(item_id, entity)
     if not ok:
         raise HTTPException(status_code=400, detail=res)
-    return {"success": True, "entity": entity, "item_id": item_id, "result": res}
+
+    # Always return True in result for frontend
+    return {"success": True, "entity": entity, "item_id": item_id, "result": True}
+
 
 
 @router.post("/fields/delete")

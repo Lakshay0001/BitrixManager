@@ -3,7 +3,7 @@ import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
-import { buildUrl, API_BASE } from "../lib/api";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
 
 
 
@@ -54,6 +54,8 @@ export default function UpdatePage() {
   const [enumsListMap, setEnumsListMap] = useState({}); // code -> array
   // 🆕 NEW: Map to store field types for input rendering
   const [fieldTypesMap, setFieldTypesMap] = useState({}); // code -> type
+
+  const [selectedFields, setSelectedFields] = useState([]);
 
   // custom template download 
   const [showCustomTemplate, setShowCustomTemplate] = useState(false);
@@ -113,19 +115,28 @@ export default function UpdatePage() {
 
   // load fields mapping when base/entity changes
   useEffect(() => {
-    if (!base) return;
+    if (!base || !entity) return;
+
     (async () => {
       try {
-        const u = `http://127.0.0.1:8000/fields/${entity}?base=${encodeURIComponent(base)}`;
-        const r = await fetch(u);
-        if (!r.ok) throw new Error(`Fields fetch failed ${r.status}`);
-        const j = await r.json();
+        const url = apiBuildUrl(`/fields/${entity}`, { base });
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Fields fetch failed ${res.status}`);
+        const data = await res.json();
 
-        const map = j.code_to_label || {};
-        const types = j.code_to_type || {}; // Assume the backend returns a map of code to type
+        console.log("RAW FIELDS RESPONSE:", data);
 
+        const result = data.result || {};
+
+        // Code → Label map
+        const map = result.code_to_label || {};
+        // Code → Type map
+        const types = result.code_to_type || {};
+
+        // Convert to array for dropdown rendering
         const arr = Object.entries(map).map(([code, label]) => ({ code, label }));
 
+        // Sort fields: ID, TITLE, NAME first, then alphabetically
         arr.sort((a, b) => {
           const order = ["ID", "TITLE", "NAME"];
           const ai = order.indexOf(a.code) >= 0 ? order.indexOf(a.code) : 99;
@@ -134,29 +145,36 @@ export default function UpdatePage() {
           return (a.label || a.code).localeCompare(b.label || b.code);
         });
 
-        // normalize enums
-        const rawEnums = j.enums || {};
+        // Normalize enums
+        const rawEnums = result.enums || {};
         const { dict: enumsDict, list: enumsList } = normalizeEnums(rawEnums);
 
+        // ✅ Update state
         setAllFields(arr);
         setFieldMap(map);
-        setFieldTypesMap(types); // 🆕 Save types map
+        setFieldTypesMap(types);
         setEnumsMap(enumsDict);
         setEnumsListMap(enumsList);
+
+        console.log("Fields array for FieldPickerInline:", arr);
+
       } catch (e) {
-        console.error(e);
+        console.error("Failed to fetch fields:", e);
         setAllFields([]);
         setFieldMap({});
-        setFieldTypesMap({}); // 🆕 Clear types map on error
+        setFieldTypesMap({});
         setEnumsMap({});
         setEnumsListMap({});
       }
     })();
-    // clear records/cards/summary on entity change
+
     setRecords([]);
     setCards([]);
     setSummary([]);
   }, [entity, base]);
+
+
+
 
   // 🆕 Helper: Determine the correct HTML input type based on Bitrix field type
   const getInputType = (code) => {
@@ -190,19 +208,27 @@ export default function UpdatePage() {
   };
 
   // Create one card per record
-  function createCardsFromRecords(rows) {
+  function createCardsFromRecords(rows, allFields) {
     const created = (rows || []).map(r => {
       return {
         cardId: `card_${String(r.ID)}_${Date.now()}`,
         recordId: String(r.ID),
         recordLabel: r.TITLE || r.NAME || String(r.ID),
         fields: [
-          { rowId: Date.now() + Math.floor(Math.random() * 1000), code: "", label: "", newValue: "", isMultiple: false, oldValue: "" }
+          {
+            rowId: Date.now() + Math.floor(Math.random() * 1000),
+            code: "",  // initially blank
+            label: "", // initially blank
+            newValue: "",
+            isMultiple: false,
+            oldValue: ""
+          }
         ]
       };
     });
     setCards(created);
   }
+
 
   // Reset fields inside existing cards (keeps cards for current records)
   function resetCardsForRecords(rows) {
@@ -225,23 +251,28 @@ export default function UpdatePage() {
     setCards(created);
   }
 
-  // fetch single
   async function fetchSingle() {
     if (!base || !idSingle) return alert("Enter base and ID");
     setLoading(true); setError("");
+
     try {
-      const url = buildUrl(`/get/${entity}/${idSingle}`, { base }); // Corrected path to match backend
+      const url = buildUrl(`/get/${entity}/${idSingle}`, { base }); // ✅ fetch single by ID
+
       const res = await fetch(url);
-      if (!res.ok) { const txt = await res.text(); throw new Error(txt || `Status ${res.status}`); }
+      if (!res.ok) throw new Error(await res.text());
+
       const j = await res.json();
-      const rec = { ...(j || {}), ID: String(j.ID ?? j.id ?? idSingle) };
+      const rec = j || {}; // single record returned
       setRecords([rec]);
       createCardsFromRecords([rec]);
+
     } catch (e) {
       setError(String(e.message || e));
       setRecords([]);
       setCards([]);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   // fetch multiple (No dedicated /get/multiple endpoint mentioned, assuming this means fetching single in loop or backend logic handles it)
@@ -354,7 +385,7 @@ export default function UpdatePage() {
           // For a functional code snippet, assume XLSX is available or handle dynamically.
           // In a real Next.js/React app, this would be:
           // XLSX = await import('xlsx/dist/xlsx.full.min.js'); 
-          
+
           // For demonstration, commenting out the actual dynamic import which might fail
           // or assuming it's imported correctly elsewhere if needed.
           // For now, if the user provided the code and it was working, this section is fine.
@@ -366,7 +397,7 @@ export default function UpdatePage() {
         }
 
         const data = await f.arrayBuffer();
-        
+
         // This line requires the XLSX library to be imported/available.
         // Assuming XLSX object is available from user's setup if they are using this.
         // const workbook = XLSX.read(data, { type: 'array' });
@@ -374,13 +405,13 @@ export default function UpdatePage() {
         // const sheet = workbook.Sheets[firstSheetName];
         // const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
         // parsedRows = json;
-        
+
         // --- Placeholder for file parsing logic if XLSX dependency is missing ---
         if (typeof XLSX === 'undefined') {
           console.warn("XLSX library not available. Skipping XLSX parsing.");
           throw new Error("XLSX library not imported or available for parsing .xlsx files.");
         }
-        
+
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[firstSheetName];
@@ -482,6 +513,11 @@ export default function UpdatePage() {
         // small delay to be gentle on API
         await new Promise(res => setTimeout(res, 120));
       }
+
+
+      // --------------------------------------
+      // Cards creation logic from file 
+      // --------------------------------------
 
       // Build cards: one per data row (keep order)
       const createdCards = dataRows.map((row, idx) => {
@@ -1192,28 +1228,38 @@ export default function UpdatePage() {
     setShowCustomTemplate(false);
   }
 
-
-
-
   // FieldPickerInline component (unchanged, for consistency)
-  function FieldPickerInline({ cardId, rowId }) {
+  function FieldPickerInline({ cardId, rowId, allFields }) {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState("");
+    const [items, setItems] = useState([]);
 
-    const items = allFields.filter(f =>
-      (f.label || f.code).toLowerCase().includes(q.toLowerCase())
-    );
-
-    const selectedFieldLabel = (() => {
-      const c = cards.find(cc => cc.cardId === cardId);
-      if (!c) return "";
-      const rf = c.fields.find(f => f.rowId === rowId);
-      return rf?.label || "";
-    })();
-
-
-    // outside click
     const wrapperRef = useRef(null);
+
+    // Debug: props check
+    useEffect(() => {
+      console.log("FieldPickerInline props:", { cardId, rowId, allFields });
+    }, [cardId, rowId, allFields]);
+
+    // Sync input with selected field from card
+    useEffect(() => {
+      const c = cards.find(cc => cc.cardId === cardId);
+      if (!c) return;
+      const rf = c.fields.find(f => f.rowId === rowId);
+      console.log("Selected row field:", rf);
+      setQ(rf?.label || "");
+    }, [cards, cardId, rowId]);
+
+    // Filter items based on search query
+    useEffect(() => {
+      const filtered = allFields.filter(f =>
+        (f.label || f.code).toLowerCase().includes(q.toLowerCase())
+      );
+      console.log("Filtered items for query:", q, filtered);
+      setItems(filtered);
+    }, [allFields, q]);
+
+    // Close dropdown on outside click
     useEffect(() => {
       function handleClickOutside(e) {
         if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -1224,6 +1270,7 @@ export default function UpdatePage() {
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [open]);
 
+    // Close dropdown on ESC
     useEffect(() => {
       const handleEsc = (e) => {
         if (e.key === "Escape") setOpen(false);
@@ -1232,18 +1279,16 @@ export default function UpdatePage() {
       return () => document.removeEventListener("keydown", handleEsc);
     }, []);
 
-
     return (
       <div className="relative w-full" ref={wrapperRef}>
         <input
-          value={selectedFieldLabel || q || ""}
+          value={q}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value);
             setOpen(true);
           }}
           placeholder="Click to select field"
-          // ✨ Use the consistent glassy style here
           className="p-2 rounded bg-white/5 w-full text-white border border-white/10"
         />
 
@@ -1280,10 +1325,10 @@ export default function UpdatePage() {
                   <div
                     key={it.code}
                     onClick={() => {
-                      // set field code and pick up isMultiple flag by inspecting the record for this card
-                      setFieldRowCode(cardId, rowId, it.code);
+                      console.log("Field selected:", it); // debug selection
+                      setFieldRowCode(cardId, rowId, it.code); // existing function
+                      setQ(it.label);                          // update input
                       setOpen(false);
-                      setQ("");
                     }}
                     className="p-2 hover:bg-zinc-700 rounded cursor-pointer text-sm text-white"
                   >
@@ -1297,6 +1342,8 @@ export default function UpdatePage() {
       </div>
     );
   }
+
+
 
   // Render (keeps your earlier layout)
   return (
@@ -1397,10 +1444,10 @@ export default function UpdatePage() {
 
 
             {error && <div className="text-sm text-red-400 mt-2">{error}</div>}
-            
+
             {/* Template Buttons - Fixed: Removed w-full to make them normal length on small screens */}
             <div className="flex gap-2 flex-col sm:flex-row mt-3">
-              <button onClick={downloadTemplate} className="btn w-auto"> 
+              <button onClick={downloadTemplate} className="btn w-auto">
                 <span className="text-xl">⤓</span> Template
               </button>
               <button
@@ -1415,14 +1462,14 @@ export default function UpdatePage() {
 
           {/* Cards area (one card per record) */}
           <div className="glass p-6 w-full mx-auto">
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2"> 
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h3 className="font-semibold">Records ({cards.length})</h3>
               {/* Reset Fields Button - Fixed: Removed w-full from the wrapper div */}
-              <div className="flex flex-col sm:flex-row gap-2 w-auto"> 
+              <div className="flex flex-col sm:flex-row gap-2 w-auto">
                 {/* Regular Width Button (Reset Fields) */}
-                <button 
-                  onClick={() => { if (records.length) resetCardsForRecords(records); else setCards([]); }} 
-                  className="btn w-auto" 
+                <button
+                  onClick={() => { if (records.length) resetCardsForRecords(records); else setCards([]); }}
+                  className="btn w-auto"
                 >
                   Reset Fields
                 </button>
@@ -1469,6 +1516,7 @@ export default function UpdatePage() {
                                 <FieldPickerInline
                                   cardId={card.cardId}
                                   rowId={f.rowId}
+                                  allFields={allFields}
                                 />
                               </div>
 
@@ -1580,11 +1628,11 @@ export default function UpdatePage() {
 
 
             {/* actions */}
-            <div className="flex flex-col sm:flex-row gap-2 mt-4"> 
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
               {/* Full Width Button (Update All) */}
-              <button 
-                onClick={doUpdateAll} 
-                className="btn w-full sm:w-auto" 
+              <button
+                onClick={doUpdateAll}
+                className="btn w-full sm:w-auto"
                 disabled={loading || cards.length === 0}
               >
                 {loading ? "Updating..." : "Update All"}
@@ -1600,11 +1648,11 @@ export default function UpdatePage() {
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h4 className="font-semibold">Update Summary ({summary.length})</h4>
               {/* Clear Summary Button - Fixed: Removed w-full from the wrapper div */}
-              <div className="flex flex-col sm:flex-row gap-2 w-auto"> 
+              <div className="flex flex-col sm:flex-row gap-2 w-auto">
                 {/* Regular Width Button (Clear Summary) */}
-                <button 
-                  onClick={() => setSummary([])} 
-                  className="btn w-auto" 
+                <button
+                  onClick={() => setSummary([])}
+                  className="btn w-auto"
                 >
                   Clear Summary
                 </button>
@@ -1649,11 +1697,11 @@ export default function UpdatePage() {
             </div>
 
             {/* actions */}
-            <div className="flex flex-col sm:flex-row gap-2 mt-4"> 
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
               {/* Full Width Button (Summary CSV) */}
-              <button 
-                onClick={downloadSummaryCSV} 
-                className="btn w-full sm:w-auto" 
+              <button
+                onClick={downloadSummaryCSV}
+                className="btn w-full sm:w-auto"
                 disabled={summary.length === 0}
               >
                 ⤓ Summary CSV
@@ -1667,78 +1715,78 @@ export default function UpdatePage() {
 
 
       {
-    showCustomTemplate && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
-        <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl w-full max-w-4xl text-white border border-white/20 shadow-2xl">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-bold">Select fields for template</h2>
-            <button
-              className="text-white/70 hover:text-white text-xl"
-              onClick={() => setShowCustomTemplate(false)}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* FIELD GRID */}
-          <input
-            type="text"
-            placeholder="Search fields..."
-            className="w-full p-2 mb-3 rounded bg-white/5 border border-white/10"
-            onChange={(e) => setTemplateSearch(e.target.value.toLowerCase())}
-          />
-
-          <div className="max-h-60 overflow-auto border border-white/10 p-3 rounded grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
-            {Object.entries(fieldMap)
-              .filter(([code, label]) =>
-                label.toLowerCase().includes(templateSearch)
-              )
-              .map(([code, label]) => (
-                <label
-                  key={code}
-                  className="flex items-center gap-2 bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10"
+        showCustomTemplate && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl w-full max-w-4xl text-white border border-white/20 shadow-2xl">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-bold">Select fields for template</h2>
+                <button
+                  className="text-white/70 hover:text-white text-xl"
+                  onClick={() => setShowCustomTemplate(false)}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedTemplateFields.includes(code)}
-                    onChange={() => {
-                      if (selectedTemplateFields.includes(code)) {
-                        setSelectedTemplateFields(
-                          selectedTemplateFields.filter((c) => c !== code)
-                        );
-                      } else {
-                        setSelectedTemplateFields([
-                          ...selectedTemplateFields,
-                          code,
-                        ]);
-                      }
-                    }}
-                  />
-                  {label}
-                </label>
-              ))}
-          </div>
+                  ✕
+                </button>
+              </div>
 
-          {/* BUTTONS */}
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              className="btn bg-gray-600"
-              onClick={() => setShowCustomTemplate(false)}
-            >
-              Cancel
-            </button>
+              {/* FIELD GRID */}
+              <input
+                type="text"
+                placeholder="Search fields..."
+                className="w-full p-2 mb-3 rounded bg-white/5 border border-white/10"
+                onChange={(e) => setTemplateSearch(e.target.value.toLowerCase())}
+              />
 
-            <button
-              className="btn bg-purple-500"
-              onClick={downloadCustomTemplate}
-            >
-              Generate
-            </button>
+              <div className="max-h-60 overflow-auto border border-white/10 p-3 rounded grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+                {Object.entries(fieldMap)
+                  .filter(([code, label]) =>
+                    label.toLowerCase().includes(templateSearch)
+                  )
+                  .map(([code, label]) => (
+                    <label
+                      key={code}
+                      className="flex items-center gap-2 bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTemplateFields.includes(code)}
+                        onChange={() => {
+                          if (selectedTemplateFields.includes(code)) {
+                            setSelectedTemplateFields(
+                              selectedTemplateFields.filter((c) => c !== code)
+                            );
+                          } else {
+                            setSelectedTemplateFields([
+                              ...selectedTemplateFields,
+                              code,
+                            ]);
+                          }
+                        }}
+                      />
+                      {label}
+                    </label>
+                  ))}
+              </div>
+
+              {/* BUTTONS */}
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  className="btn bg-gray-600"
+                  onClick={() => setShowCustomTemplate(false)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className="btn bg-purple-500"
+                  onClick={downloadCustomTemplate}
+                >
+                  Generate
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    )
-  }
+        )
+      }
 
 
     </Layout >
