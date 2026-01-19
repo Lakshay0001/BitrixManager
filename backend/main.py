@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -55,6 +55,15 @@ app.include_router(users_router, prefix=API_PREFIX, tags=["Users"])
 # --------------------------------------------------
 # SYSTEM / HEALTH ENDPOINTS
 # --------------------------------------------------
+
+@app.head("/health", tags=["System"])
+def health_head():
+    return Response(status_code=200)
+
+@app.head("/", tags=["System"])
+def root_head():
+    return Response(status_code=200)
+
 @app.get("/health", tags=["System"])
 def health():
     return {"status": "ok"}

@@ -78,7 +78,14 @@ export default function Home() {
               onClick={() => navigate("/fields")}
               className="p-3 bg-white/10 hover:bg-white/20 rounded-lg text-left transition-colors"
             >
-              📄 List Field & Find Duplicate
+              👤 User Details
+            </button>
+
+            <button
+              onClick={() => navigate("/fields")}
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-lg text-left transition-colors"
+            >
+              📄 List Fields & Find Duplicate
             </button>
 
             <button
@@ -113,7 +120,7 @@ export default function Home() {
               onClick={() => navigate("/list-get-update")}
               className="p-3 bg-purple-600/20 border border-purple-500/50 hover:bg-purple-600/30 rounded-lg text-left transition-colors text-purple-300 font-medium"
             >
-              🔄 List & Update (Advanced)
+              🔄 List, Get & Update (Advanced)
             </button>
           </div>
         </div>
