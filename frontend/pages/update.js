@@ -256,7 +256,7 @@ export default function UpdatePage() {
     setLoading(true); setError("");
 
     try {
-      const url = buildUrl(`/get/${entity}/${idSingle}`, { base }); // ✅ fetch single by ID
+      const url = apiBuildUrl(`/get/${entity}/${idSingle}`, { base }); // ✅ fetch single by ID
 
       const res = await fetch(url);
       if (!res.ok) throw new Error(await res.text());
