@@ -71,6 +71,11 @@ export default function UpdatePage() {
   // update summary
   const [summary, setSummary] = useState([]);
 
+
+  const [usersList, setUsersList] = useState([]);
+  const [usersMap, setUsersMap] = useState({});
+
+
   // load webhook
   useEffect(() => {
     if (webhook) setBase(webhook);
@@ -198,15 +203,6 @@ export default function UpdatePage() {
     }
   };
 
-  // helpers
-  const buildUrl = (path, qs = {}) => {
-    const u = new URL(path, "http://127.0.0.1:8000");
-    Object.entries(qs).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);
-    });
-    return u.toString();
-  };
-
   // Create one card per record
   function createCardsFromRecords(rows, allFields) {
     const created = (rows || []).map(r => {
@@ -287,7 +283,7 @@ export default function UpdatePage() {
 
     try {
       for (const id of ids) {
-        const url = buildUrl(`/get/${entity}/${id}`, { base });
+        const url = apiBuildUrl(`/get/${entity}/${id}`, { base });
         const res = await fetch(url);
         if (res.ok) {
           const j = await res.json();
@@ -500,7 +496,7 @@ export default function UpdatePage() {
       const fetchedRecords = [];
       for (const batch of batches) {
         const promises = batch.map(idv => {
-          const url = buildUrl(`/get/${entity}/${idv}`, { base });
+          const url = apiBuildUrl(`/get/${entity}/${idv}`, { base });
           return fetch(url).then(res => {
             if (!res.ok) return null;
             return res.json().catch(() => null);
@@ -668,6 +664,12 @@ export default function UpdatePage() {
 
     // 3. Date/Datetime fields formatting
     const type = fieldTypesMap[code];
+    if (['user', 'employee', 'crm_user'].includes(type)) {
+      if (Array.isArray(v)) {
+        return v.map(id => usersMap[String(id)] || id).join(", ");
+      }
+      return usersMap[String(v)] || v;
+    }
     if (type === 'date' && v) {
       // Bitrix date is YYYY-MM-DD
       return String(v).split('T')[0];
@@ -755,7 +757,8 @@ export default function UpdatePage() {
       // call backend update endpoint for this record
       let updateMsg = "";
       try {
-        const url = `http://127.0.0.1:8000/update/${entity}/${encodeURIComponent(card.recordId)}?base=${encodeURIComponent(base)}`;
+        const path = `/update/${entity}/${encodeURIComponent(card.recordId)}`;
+        const url = `${apiBuildUrl(path, { base })}?base=${encodeURIComponent(base)}`;
         const payload = { fields: payloadFields };
         const r = await fetch(url, {
           method: "POST",
@@ -1044,24 +1047,41 @@ export default function UpdatePage() {
   }
 
   // UserSelectDropdown component for user-type fields
-  function UserSelectDropdown({ value, onChange, isMultiple }) {
+  function UserSelectDropdown({ value, onChange, isMultiple, users }) {
     const [allUsers, setAllUsers] = useState([]);
     const [userLoading, setUserLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const containerRef = useRef(null);
 
     useEffect(() => {
-      if (allUsers.length === 0 && !userLoading && base) {
-        setUserLoading(true);
-        fetch(`http://127.0.0.1:8000/users?base=${encodeURIComponent(base)}`)
-          .then(r => r.json())
-          .then(j => {
-            setAllUsers(j.result || []);
-          })
-          .catch(err => console.error('Error loading users:', err))
-          .finally(() => setUserLoading(false));
-      }
+      if (!base) return;
+
+      const url = apiBuildUrl("/users/search", { base });
+
+      fetch(url)
+        .then(r => r.json())
+        .then(j => {
+          const users = j.result || j.users || [];
+
+          setUsersList(users);
+
+          const map = {};
+          users.forEach(u => {
+            map[String(u.ID)] = u.NAME || u.LOGIN;
+          });
+          setUsersMap(map);
+        })
+        .catch(err => {
+          console.error("Users fetch failed:", err);
+          setUsersList([]);
+          setUsersMap({});
+        });
+
     }, [base]);
+
+
+
+
 
     // Outside click handler
     useEffect(() => {
@@ -1075,7 +1095,8 @@ export default function UpdatePage() {
     }, []);
 
     if (isMultiple) {
-      const vals = Array.isArray(value) ? value.map(String) : (value ? [String(value)] : []);
+      const vals = Array.isArray(value) ? value.map(String) : [];
+
       const toggleValue = (v) => {
         if (vals.includes(v)) {
           onChange(vals.filter(x => x !== v));
@@ -1125,7 +1146,8 @@ export default function UpdatePage() {
       );
     } else {
       // Single-select for users
-      const selectedLabel = allUsers.find(u => String(u.ID) === String(value))?.NAME || value || "Select User";
+      const selectedLabel = users.find(u => String(u.ID) === String(value))?.NAME || "Select User";
+
 
       return (
         <div className="relative w-full" ref={containerRef}>
@@ -1159,20 +1181,28 @@ export default function UpdatePage() {
 
   async function downloadTemplate() {
     if (!base) return alert("Base webhook required");
-    const url = `http://127.0.0.1:8000/template/${entity}?base=${encodeURIComponent(base)}`;
 
-    const res = await fetch(url);
-    if (!res.ok) {
-      alert("Could not download template");
-      return;
+    // ✅ Single-line URL build
+    const url = `${apiBuildUrl(`/template/${entity}`, { base })}?base=${encodeURIComponent(base)}`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        alert("Could not download template");
+        return;
+      }
+
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${entity}_template.xlsx`;
+      a.click();
+    } catch (err) {
+      console.error("Template download error:", err);
+      alert("Could not download template (network error)");
     }
-
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${entity}_template.xlsx`;
-    a.click();
   }
+
 
 
   async function downloadCustomTemplate() {
@@ -1201,16 +1231,25 @@ export default function UpdatePage() {
       };
     });
 
-    const url = `http://127.0.0.1:8000/template/custom/${entity}?base=${encodeURIComponent(base)}`;
+    const path = `/template/custom/${entity}`;
+    const url = `${apiBuildUrl(path, { base })}?base=${encodeURIComponent(base)}`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fields: selectedTemplateFields,   // ✅ backend compatible
-        meta: customFields                // ✅ label + hints separately
+        fields: selectedTemplateFields, // ✅ backend compatible
+        meta: customFields               // ✅ label + hints separately
       })
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Template fetch failed ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+
 
     if (!res.ok) {
       const txt = await res.text();
@@ -1547,11 +1586,11 @@ export default function UpdatePage() {
                                   // User select dropdown
                                   <UserSelectDropdown
                                     value={f.newValue}
-                                    onChange={(v) =>
-                                      setFieldRowNewValue(card.cardId, f.rowId, v)
-                                    }
+                                    onChange={(v) => setFieldRowNewValue(card.cardId, f.rowId, v)}
                                     isMultiple={f.isMultiple}
+                                    users={usersList}
                                   />
+
                                 ) : enumsListMap[f.code] &&
                                   enumsListMap[f.code].length > 0 ? (
                                   f.isMultiple ? (

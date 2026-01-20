@@ -96,38 +96,3 @@ def normalize_enums(raw_enums: Dict[str, Any]):
             dict_map[field_code] = {}
             list_map[field_code] = []
     return {"dict": dict_map, "list": list_map}
-
-
-@router.get("/fields/{entity}")
-def get_fields(entity: str, base: str = Query(...)):
-    bx = BitrixWrapper(base)
-    try:
-        meta = bx.get_fields(entity)
-        if not meta:
-            raise HTTPException(status_code=404, detail="Entity fields not found")
-
-        code_to_label = meta.get("code_to_label") or {}
-        code_to_type = meta.get("code_to_type") or {}
-        raw_enums = meta.get("enums") or {}
-        normalized = normalize_enums(raw_enums)
-
-        return {
-            "success": True,
-            "entity": entity,
-            "code_to_label": code_to_label,
-            "code_to_type": code_to_type,
-            "enums": normalized["dict"],
-            "enums_list": normalized["list"],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch fields: {str(e)}")
-
-
-@router.get("/fields/{entity}/duplicates")
-def get_duplicate_fields(entity: str, base: str = Query(...)):
-    bx = BitrixWrapper(base)
-    try:
-        fields = bx.get_duplicate_fields(entity)
-        return {"success": True, "entity": entity, "result": fields or []}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch duplicate fields: {str(e)}")

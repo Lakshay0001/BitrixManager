@@ -34,7 +34,6 @@ export default function UsersPage() {
         try {
             const url = apiBuildUrl("/users/search", { base, search: query || undefined, active: activeOnly });
             console.log("Fetching users from:", url);
-            console.log("API_BASE:", process.env.NEXT_PUBLIC_API_BASE)
             fetch(url)
                 .then(res => res.json())
                 .then(console.log)
