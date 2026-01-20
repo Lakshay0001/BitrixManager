@@ -664,12 +664,6 @@ export default function UpdatePage() {
 
     // 3. Date/Datetime fields formatting
     const type = fieldTypesMap[code];
-    if (['user', 'employee', 'crm_user'].includes(type)) {
-      if (Array.isArray(v)) {
-        return v.map(id => usersMap[String(id)] || id).join(", ");
-      }
-      return usersMap[String(v)] || v;
-    }
     if (type === 'date' && v) {
       // Bitrix date is YYYY-MM-DD
       return String(v).split('T')[0];
@@ -757,8 +751,7 @@ export default function UpdatePage() {
       // call backend update endpoint for this record
       let updateMsg = "";
       try {
-        const path = `/update/${entity}/${encodeURIComponent(card.recordId)}`;
-        const url = `${apiBuildUrl(path, { base })}?base=${encodeURIComponent(base)}`;
+        const url = apiBuildUrl(`/update/${entity}/${encodeURIComponent(card.recordId)}`, { base });
         const payload = { fields: payloadFields };
         const r = await fetch(url, {
           method: "POST",
@@ -1047,787 +1040,790 @@ export default function UpdatePage() {
   }
 
   // UserSelectDropdown component for user-type fields
-  function UserSelectDropdown({ value, onChange, isMultiple, users }) {
+  function UserSelectDropdown({ value, onChange, isMultiple }) {
     const [allUsers, setAllUsers] = useState([]);
     const [userLoading, setUserLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const containerRef = useRef(null);
 
     useEffect(() => {
-      if (!base) return;
+      if (!open) return;
+      if (!base || userLoading || allUsers.length > 0) return;
+
+      setUserLoading(true);
 
       const url = apiBuildUrl("/users/search", { base });
+      console.log("Fetching users from:", url);
 
       fetch(url)
         .then(r => r.json())
         .then(j => {
-          const users = j.result || j.users || [];
+          const rawUsers = j.result || j.users || [];
 
-          setUsersList(users);
+          const normalizedUsers = rawUsers.map(u => ({
+            ID: String(u.id),
+            NAME:
+              `${u.name || ""} ${u.last_name || ""}`.trim() ||
+              u.email ||
+              `User ${u.id}`,
+            EMAIL: u.email,
+            ACTIVE: u.active
+          }));
 
-          const map = {};
-          users.forEach(u => {
-            map[String(u.ID)] = u.NAME || u.LOGIN;
-          });
-          setUsersMap(map);
-        })
-        .catch(err => {
-          console.error("Users fetch failed:", err);
-          setUsersList([]);
-          setUsersMap({});
-        });
+          setAllUsers(normalizedUsers);
+        }).catch (err => {
+        console.error("Error loading users:", err);
+        setAllUsers([]);
+      })
+      .finally(() => setUserLoading(false));
 
-    }, [base]);
+  }, [open, base]);
 
 
 
 
+  // Outside click handler
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-    // Outside click handler
-    useEffect(() => {
-      const handler = (e) => {
-        if (containerRef.current && !containerRef.current.contains(e.target)) {
-          setOpen(false);
-        }
-      };
-      document.addEventListener("mousedown", handler);
-      return () => document.removeEventListener("mousedown", handler);
-    }, []);
+  if (isMultiple) {
+    const vals = Array.isArray(value) ? value.map(String) : (value ? [String(value)] : []);
+    const toggleValue = (v) => {
+      if (vals.includes(v)) {
+        onChange(vals.filter(x => x !== v));
+      } else {
+        onChange([...vals, v]);
+      }
+    };
 
-    if (isMultiple) {
-      const vals = Array.isArray(value) ? value.map(String) : [];
+    const selectedLabels = vals.map(v => allUsers.find(u => String(u.ID) === v)?.NAME || v).join(", ");
 
-      const toggleValue = (v) => {
-        if (vals.includes(v)) {
-          onChange(vals.filter(x => x !== v));
-        } else {
-          onChange([...vals, v]);
-        }
-      };
-
-      const selectedLabels = vals.map(v => allUsers.find(u => String(u.ID) === v)?.NAME || v).join(", ");
-
-      return (
-        <div className="relative w-full" ref={containerRef}>
-          <div
-            className="p-2 rounded bg-white/5 text-white border border-white/10 cursor-pointer hover:border-purple-500 transition-colors"
-            onClick={() => setOpen(!open)}
-          >
-            {vals.length === 0 ? <span className="text-white/40">Select Users</span> : selectedLabels}
-          </div>
-
-          {open && (
-            <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-white/10 rounded shadow-xl max-h-60 overflow-auto">
-              {allUsers.map((user) => {
-                const id = String(user.ID);
-                const isChecked = vals.includes(id);
-                return (
-                  <div
-                    key={id}
-                    className={`flex items-center gap-2 px-2 py-2 hover:bg-white/10 cursor-pointer text-sm ${isChecked ? "bg-purple-600/20 text-purple-300" : "text-white"}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleValue(id);
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      readOnly
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span>{user.NAME || user.LOGIN}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+    return (
+      <div className="relative w-full" ref={containerRef}>
+        <div
+          className="p-2 rounded bg-white/5 text-white border border-white/10 cursor-pointer hover:border-purple-500 transition-colors"
+          onClick={() => setOpen(!open)}
+        >
+          {vals.length === 0 ? <span className="text-white/40">Select Users</span> : selectedLabels}
         </div>
-      );
-    } else {
-      // Single-select for users
-      const selectedLabel = users.find(u => String(u.ID) === String(value))?.NAME || "Select User";
 
-
-      return (
-        <div className="relative w-full" ref={containerRef}>
-          <div
-            className="p-2 rounded bg-white/5 text-white border border-white/10 cursor-pointer hover:border-purple-500 transition-colors"
-            onClick={() => setOpen(!open)}
-          >
-            {value ? selectedLabel : <span className="text-white/40">Select User</span>}
-          </div>
-
-          {open && (
-            <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-white/10 rounded shadow-xl max-h-60 overflow-auto">
-              {allUsers.map((user) => (
+        {open && (
+          <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-white/10 rounded shadow-xl max-h-60 overflow-auto">
+            {allUsers.map((user) => {
+              const id = String(user.ID);
+              const isChecked = vals.includes(id);
+              return (
                 <div
-                  key={user.ID}
-                  className="p-2 hover:bg-white/10 cursor-pointer text-sm text-white"
-                  onClick={() => {
-                    onChange(String(user.ID));
-                    setOpen(false);
+                  key={id}
+                  className={`flex items-center gap-2 px-2 py-2 hover:bg-white/10 cursor-pointer text-sm ${isChecked ? "bg-purple-600/20 text-purple-300" : "text-white"}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleValue(id);
                   }}
                 >
-                  {user.NAME || user.LOGIN}
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    readOnly
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span>{user.NAME || user.LOGIN}</span>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    // Single-select for users
+    const selectedLabel = allUsers.find(u => String(u.ID) === String(value))?.NAME || value || "Select User";
+
+    return (
+      <div className="relative w-full" ref={containerRef}>
+        <div
+          className="p-2 rounded bg-white/5 text-white border border-white/10 cursor-pointer hover:border-purple-500 transition-colors"
+          onClick={() => setOpen(!open)}
+        >
+          {value ? selectedLabel : <span className="text-white/40">Select User</span>}
         </div>
-      );
-    }
+
+        {open && (
+          <div className="absolute z-50 mt-1 w-full bg-zinc-900 border border-white/10 rounded shadow-xl max-h-60 overflow-auto">
+            {allUsers.map((user) => (
+              <div
+                key={user.ID}
+                className="p-2 hover:bg-white/10 cursor-pointer text-sm text-white"
+                onClick={() => {
+                  onChange(String(user.ID));
+                  setOpen(false);
+                }}
+              >
+                {user.NAME || user.LOGIN}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
+}
 
-  async function downloadTemplate() {
-    if (!base) return alert("Base webhook required");
+async function downloadTemplate() {
+  if (!base) return alert("Base webhook required");
 
-    // ✅ Single-line URL build
-    const url = `${apiBuildUrl(`/template/${entity}`, { base })}?base=${encodeURIComponent(base)}`;
+  // ✅ Single-line URL build
+  const url = apiBuildUrl(`/template/${entity}`, { base });
 
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        alert("Could not download template");
-        return;
-      }
-
-      const blob = await res.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${entity}_template.xlsx`;
-      a.click();
-    } catch (err) {
-      console.error("Template download error:", err);
-      alert("Could not download template (network error)");
-    }
-  }
-
-
-
-  async function downloadCustomTemplate() {
-    if (selectedTemplateFields.length === 0) {
-      alert("Select at least 1 field!");
-      return;
-    }
-
-    // ✅ Build label + hint list for backend
-    const customFields = selectedTemplateFields.map(code => {
-      const label = fieldMap[code] || code;
-
-      if (enumsListMap[code] && enumsListMap[code].length > 0) {
-        const options = enumsListMap[code].map(o => o.VALUE).join(", ");
-        return {
-          code,
-          label,
-          hint: options
-        };
-      }
-
-      return {
-        code,
-        label,
-        hint: ""
-      };
-    });
-
-    const path = `/template/custom/${entity}`;
-    const url = `${apiBuildUrl(path, { base })}?base=${encodeURIComponent(base)}`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: selectedTemplateFields, // ✅ backend compatible
-        meta: customFields               // ✅ label + hints separately
-      })
-    });
-
+  try {
+    const res = await fetch(url);
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Template fetch failed ${res.status}: ${text}`);
-    }
-
-    const data = await res.json();
-
-
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("Template error:", txt);
-      alert("Template generation failed");
+      alert("Could not download template");
       return;
     }
 
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${entity}_custom_template.xlsx`;
+    a.download = `${entity}_template.xlsx`;
     a.click();
+  } catch (err) {
+    console.error("Template download error:", err);
+    alert("Could not download template (network error)");
+  }
+}
 
-    setShowCustomTemplate(false);
+
+
+async function downloadCustomTemplate() {
+  if (selectedTemplateFields.length === 0) {
+    alert("Select at least 1 field!");
+    return;
   }
 
-  // FieldPickerInline component (unchanged, for consistency)
-  function FieldPickerInline({ cardId, rowId, allFields }) {
-    const [open, setOpen] = useState(false);
-    const [q, setQ] = useState("");
-    const [items, setItems] = useState([]);
+  // ✅ Build label + hint list for backend
+  const customFields = selectedTemplateFields.map(code => {
+    const label = fieldMap[code] || code;
 
-    const wrapperRef = useRef(null);
-
-    // Debug: props check
-    useEffect(() => {
-      console.log("FieldPickerInline props:", { cardId, rowId, allFields });
-    }, [cardId, rowId, allFields]);
-
-    // Sync input with selected field from card
-    useEffect(() => {
-      const c = cards.find(cc => cc.cardId === cardId);
-      if (!c) return;
-      const rf = c.fields.find(f => f.rowId === rowId);
-      console.log("Selected row field:", rf);
-      setQ(rf?.label || "");
-    }, [cards, cardId, rowId]);
-
-    // Filter items based on search query
-    useEffect(() => {
-      const filtered = allFields.filter(f =>
-        (f.label || f.code).toLowerCase().includes(q.toLowerCase())
-      );
-      console.log("Filtered items for query:", q, filtered);
-      setItems(filtered);
-    }, [allFields, q]);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-      function handleClickOutside(e) {
-        if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-          setOpen(false);
-        }
-      }
-      if (open) document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [open]);
-
-    // Close dropdown on ESC
-    useEffect(() => {
-      const handleEsc = (e) => {
-        if (e.key === "Escape") setOpen(false);
+    if (enumsListMap[code] && enumsListMap[code].length > 0) {
+      const options = enumsListMap[code].map(o => o.VALUE).join(", ");
+      return {
+        code,
+        label,
+        hint: options
       };
-      document.addEventListener("keydown", handleEsc);
-      return () => document.removeEventListener("keydown", handleEsc);
-    }, []);
+    }
 
-    return (
-      <div className="relative w-full" ref={wrapperRef}>
-        <input
-          value={q}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-          }}
-          placeholder="Click to select field"
-          className="p-2 rounded bg-white/5 w-full text-white border border-white/10"
-        />
+    return {
+      code,
+      label,
+      hint: ""
+    };
+  });
 
-        {open && (
-          <>
-            <div
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 bg-black/40 z-30"
-            ></div>
+  const url = apiBuildUrl(`/template/custom/${entity}`, { base });
 
-            <div className="absolute z-40 mt-1 w-full bg-zinc-900/95 p-3 rounded-lg shadow-xl max-h-64 overflow-auto border border-white/10 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fields: selectedTemplateFields, // ✅ backend compatible
+      meta: customFields               // ✅ label + hints separately
+    })
+  });
 
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-white/80">Select Field</span>
-                <button
-                  className="text-white/60 hover:text-white text-sm"
-                  onClick={() => setOpen(false)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search..."
-                className="w-full p-2 rounded bg-zinc-800 text-white mb-3 border border-white/10"
-              />
-
-              {items.length === 0 ? (
-                <div className="text-sm text-white/50">No fields found</div>
-              ) : (
-                items.map((it) => (
-                  <div
-                    key={it.code}
-                    onClick={() => {
-                      console.log("Field selected:", it); // debug selection
-                      setFieldRowCode(cardId, rowId, it.code); // existing function
-                      setQ(it.label);                          // update input
-                      setOpen(false);
-                    }}
-                    className="p-2 hover:bg-zinc-700 rounded cursor-pointer text-sm text-white"
-                  >
-                    {it.label}
-                  </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Template fetch failed ${res.status}: ${text}`);
   }
 
+  const data = await res.json();
 
 
-  // Render (keeps your earlier layout)
+  if (!res.ok) {
+    const txt = await res.text();
+    console.error("Template error:", txt);
+    alert("Template generation failed");
+    return;
+  }
+
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${entity}_custom_template.xlsx`;
+  a.click();
+
+  setShowCustomTemplate(false);
+}
+
+// FieldPickerInline component (unchanged, for consistency)
+function FieldPickerInline({ cardId, rowId, allFields }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [items, setItems] = useState([]);
+
+  const wrapperRef = useRef(null);
+
+  // Debug: props check
+  useEffect(() => {
+    console.log("FieldPickerInline props:", { cardId, rowId, allFields });
+  }, [cardId, rowId, allFields]);
+
+  // Sync input with selected field from card
+  useEffect(() => {
+    const c = cards.find(cc => cc.cardId === cardId);
+    if (!c) return;
+    const rf = c.fields.find(f => f.rowId === rowId);
+    console.log("Selected row field:", rf);
+    setQ(rf?.label || "");
+  }, [cards, cardId, rowId]);
+
+  // Filter items based on search query
+  useEffect(() => {
+    const filtered = allFields.filter(f =>
+      (f.label || f.code).toLowerCase().includes(q.toLowerCase())
+    );
+    console.log("Filtered items for query:", q, filtered);
+    setItems(filtered);
+  }, [allFields, q]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  // Close dropdown on ESC
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, []);
+
   return (
-    <Layout>
-      {loading && <LoadingSpinner message="Loading..." />}
-      {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
-      <div className="min-h-screen p-4 sm:p-6 md:p-10">
-        {/* 🟢 CHANGE: Increased Max Width for better table viewing */}
-        <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
+    <div className="relative w-full" ref={wrapperRef}>
+      <input
+        value={q}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setOpen(true);
+        }}
+        placeholder="Click to select field"
+        className="p-2 rounded bg-white/5 w-full text-white border border-white/10"
+      />
 
-          {/* Controls - UPDATED: Removed max-w-4xl, made it w-full */}
-          <div className="glass p-6 w-full mx-auto">
-            <h3 className="font-semibold mb-3">Update Records</h3>
+      {open && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 bg-black/40 z-30"
+          ></div>
 
-            {/* Top row: lead/deal toggle and base */}
-            <div className="flex flex-col lg:flex-row gap-3 justify-between items-start">
-              <div className="flex gap-2 items-center">
-                {/* Regular Width Buttons */}
-                <button onClick={() => setEntity("lead")} className={`py-2 px-4 rounded ${entity === "lead" ? "btn text-white" : "bg-white/10"} w-auto`}>Lead</button>
-                <button onClick={() => setEntity("deal")} className={`py-2 px-4 rounded ${entity === "deal" ? "btn text-white" : "bg-white/10"} w-auto`}>Deal</button>
-              </div>
+          <div className="absolute z-40 mt-1 w-full bg-zinc-900/95 p-3 rounded-lg shadow-xl max-h-64 overflow-auto border border-white/10 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
 
-              {/* method selector */}
-              <div className="flex gap-2 flex-wrap">
-                {/* Regular Width Buttons */}
-                <button onClick={() => setMethod("single")} className={`py-2 px-4 rounded ${method === "single" ? "btn" : "bg-white/10"} w-auto`}>Single ID</button>
-                <button onClick={() => setMethod("comma")} className={`py-2 px-4 rounded ${method === "comma" ? "btn" : "bg-white/10"} w-auto`}>Comma-separated</button>
-                <button onClick={() => setMethod("file")} className={`py-2 px-4 rounded ${method === "file" ? "btn" : "bg-white/10"} w-auto`}>CSV / XLSX Upload</button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 rounded mt-3">
-              <input value={base} onChange={e => setBase(e.target.value)} placeholder="Base webhook URL" className="p-2 rounded bg-white/5 w-full" />
-            </div>
-
-
-            {/* method inputs */}
-            <div className="mt-3">
-              {method === "single" && (
-                <div className="flex gap-2 flex-col sm:flex-row items-center">
-                  <input value={idSingle} onChange={e => setIdSingle(e.target.value)} placeholder="Enter ID" className="p-2 rounded bg-white/5 flex-1 w-full sm:w-auto" />
-                  {/* Full Width Button (Fetch) */}
-                  <button onClick={fetchSingle} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
-                </div>
-              )}
-
-              {method === "comma" && (
-                <div className="flex gap-2 flex-col sm:flex-row items-center">
-                  <input value={idsComma} onChange={e => setIdsComma(e.target.value)} placeholder="e.g. 12,34,56" className="p-2 rounded bg-white/5 flex-1 w-full sm:w-auto" />
-                  {/* Full Width Button (Fetch) */}
-                  <button onClick={fetchMultiple} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
-                </div>
-              )}
-
-              {method === "file" && (
-                <div className="flex flex-wrap gap-3 items-center">
-
-                  <label
-                    htmlFor="fileInput"
-                    className="px-4 py-2 bg-white/10 text-white rounded-lg cursor-pointer"
-                  >
-                    Upload File
-                  </label>
-
-                  {/* HIDDEN FILE INPUT */}
-                  <input
-                    type="file"
-                    id="fileInput"
-                    ref={fileRef}
-                    className="hidden"
-                    accept=".csv, .xlsx, .xls"
-                    onChange={(e) => {
-                      const f = e.target.files && e.target.files[0];
-                      if (f) {
-                        setFileName(f.name);
-                        // auto-run processing immediately when user picks the file:
-                        // give the input time to update then call fetchByFile
-                        setTimeout(() => fetchByFile(), 50);
-                      }
-                    }}
-                  />
-
-
-                  <span className="text-sm text-white/50" id="fileName">
-                    {fileName || "No file chosen"}
-                  </span>
-
-                  <button
-                    onClick={fetchByFile}
-                    className="btn w-full sm:w-auto" // Full Width Button (Fetch)
-                    disabled={loading}
-                  >
-                    {loading ? "Upload & Fetch" : "Upload & Fetch"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-
-            {error && <div className="text-sm text-red-400 mt-2">{error}</div>}
-
-            {/* Template Buttons - Fixed: Removed w-full to make them normal length on small screens */}
-            <div className="flex gap-2 flex-col sm:flex-row mt-3">
-              <button onClick={downloadTemplate} className="btn w-auto">
-                <span className="text-xl">⤓</span> Template
-              </button>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-white/80">Select Field</span>
               <button
-                onClick={() => setShowCustomTemplate(true)}
-                className="btn w-auto"
+                className="text-white/60 hover:text-white text-sm"
+                onClick={() => setOpen(false)}
               >
-                <span className="text-xl">⤓</span> Custom Template
+                ✕
               </button>
             </div>
 
-          </div>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search..."
+              className="w-full p-2 rounded bg-zinc-800 text-white mb-3 border border-white/10"
+            />
 
-          {/* Cards area (one card per record) */}
-          <div className="glass p-6 w-full mx-auto">
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <h3 className="font-semibold">Records ({cards.length})</h3>
-              {/* Reset Fields Button - Fixed: Removed w-full from the wrapper div */}
-              <div className="flex flex-col sm:flex-row gap-2 w-auto">
-                {/* Regular Width Button (Reset Fields) */}
-                <button
-                  onClick={() => { if (records.length) resetCardsForRecords(records); else setCards([]); }}
-                  className="btn w-auto"
+            {items.length === 0 ? (
+              <div className="text-sm text-white/50">No fields found</div>
+            ) : (
+              items.map((it) => (
+                <div
+                  key={it.code}
+                  onClick={() => {
+                    console.log("Field selected:", it); // debug selection
+                    setFieldRowCode(cardId, rowId, it.code); // existing function
+                    setQ(it.label);                          // update input
+                    setOpen(false);
+                  }}
+                  className="p-2 hover:bg-zinc-700 rounded cursor-pointer text-sm text-white"
                 >
-                  Reset Fields
-                </button>
-              </div>
+                  {it.label}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+
+// Render (keeps your earlier layout)
+return (
+  <Layout>
+    {loading && <LoadingSpinner message="Loading..." />}
+    {/* 🟢 CHANGE: Responsive Padding (p-4 on mobile, p-10 on desktop) */}
+    <div className="min-h-screen p-4 sm:p-6 md:p-10">
+      {/* 🟢 CHANGE: Increased Max Width for better table viewing */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 gap-6">
+
+        {/* Controls - UPDATED: Removed max-w-4xl, made it w-full */}
+        <div className="glass p-6 w-full mx-auto">
+          <h3 className="font-semibold mb-3">Update Records</h3>
+
+          {/* Top row: lead/deal toggle and base */}
+          <div className="flex flex-col lg:flex-row gap-3 justify-between items-start">
+            <div className="flex gap-2 items-center">
+              {/* Regular Width Buttons */}
+              <button onClick={() => setEntity("lead")} className={`py-2 px-4 rounded ${entity === "lead" ? "btn text-white" : "bg-white/10"} w-auto`}>Lead</button>
+              <button onClick={() => setEntity("deal")} className={`py-2 px-4 rounded ${entity === "deal" ? "btn text-white" : "bg-white/10"} w-auto`}>Deal</button>
             </div>
 
-
-
-            {/* Cards */}
-            <div className="grid gap-3">
-              {cards.length === 0 ? (
-                <div className="muted">No records loaded. Fetch first.</div>
-              ) : (
-                cards.map((card) => {
-                  const record = records.find(
-                    (r) => String(r.ID) === String(card.recordId)
-                  );
-
-                  return (
-                    <div key={card.cardId} className="p-3 rounded bg-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <strong>ID: {card.recordId}</strong>{" "}
-                          {card.recordLabel ? `— ${card.recordLabel}` : ""}
-                        </div>
-                        <div className="text-sm muted">
-                          Fields: {card.fields.length}
-                        </div>
-                      </div>
-
-                      {/* field rows */}
-                      <div className="grid gap-2">
-                        {card.fields.map((f) => (
-                          <div
-                            key={f.rowId}
-                            // Stacks on mobile, switches to a 12-column grid on medium (tablet/desktop) screens
-                            className="flex flex-col md:grid md:grid-cols-12 gap-2 items-start md:items-center"
-                          >
-                            {/* The main input area: Full width on mobile, 11/12 on tablet/desktop */}
-                            <div className="w-full md:col-span-11 grid grid-cols-1 md:grid-cols-12 gap-2 text-xs text-white/50 mb-1">
-
-                              {/* FIELD PICKER: Full width on mobile, 4/12 on tablet/desktop */}
-                              <div className="col-span-12 md:col-span-4">
-                                <FieldPickerInline
-                                  cardId={card.cardId}
-                                  rowId={f.rowId}
-                                  allFields={allFields}
-                                />
-                              </div>
-
-                              {/* OLD VALUE (ENUM label support + placeholder) */}
-                              {/* Full width on mobile, 4/12 on tablet/desktop */}
-                              <div className="col-span-12 md:col-span-4 p-2 rounded bg-white/5 w-full text-white border border-white/10">
-                                {(() => {
-                                  const val = enumsListMap[f.code]
-                                    ? getEnumLabel(
-                                      {
-                                        enumerations: enumsListMap[f.code],
-                                        isMultiple: f.isMultiple,
-                                      },
-                                      record ? record[f.code] : f.oldValue
-                                    )
-                                    : getOldValueForRecord(record, f.code);
-
-                                  return val && String(val).trim() !== ""
-                                    ? val
-                                    : <span className="text-white/40 italic">Old Value</span>;
-                                })()}
-                              </div>
-
-
-                              {/* NEW VALUE PICKER: Full width on mobile, 4/12 on tablet/desktop */}
-                              <div className="col-span-12 md:col-span-4 flex gap-2 items-center">
-                                {fieldTypesMap[f.code] === 'user' ? (
-                                  // User select dropdown
-                                  <UserSelectDropdown
-                                    value={f.newValue}
-                                    onChange={(v) => setFieldRowNewValue(card.cardId, f.rowId, v)}
-                                    isMultiple={f.isMultiple}
-                                    users={usersList}
-                                  />
-
-                                ) : enumsListMap[f.code] &&
-                                  enumsListMap[f.code].length > 0 ? (
-                                  f.isMultiple ? (
-                                    <MultiEnumSelect
-                                      options={enumsListMap[f.code]}
-                                      value={f.newValue || []}
-                                      onChange={(vals) =>
-                                        setFieldRowNewValue(card.cardId, f.rowId, vals)
-                                      }
-                                      placeholder="Select values"
-                                    />
-                                  ) : (
-                                    /* SINGLE SELECT */
-                                    <SingleEnumSelect
-                                      options={enumsListMap[f.code]}
-                                      value={f.newValue}
-                                      onChange={(v) =>
-                                        setFieldRowNewValue(card.cardId, f.rowId, v)
-                                      }
-                                    />
-
-                                  )
-                                ) : (
-                                  /* NON ENUM INPUT */
-                                  <input
-                                    type={getInputType(f.code)}
-                                    value={
-                                      f.code === "datetime"
-                                        ? formatDatetimeLocal(f.newValue)
-                                        : f.newValue
-                                    }
-                                    onChange={(e) =>
-                                      setFieldRowNewValue(
-                                        card.cardId,
-                                        f.rowId,
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder="New value"
-                                    className="p-2 rounded bg-white/5 w-full text-white border border-white/10 italic"
-                                    {...(getInputType(f.code) === "number" && {
-                                      step: "any",
-                                    })}
-                                    disabled={!f.code}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                            {/* REMOVE & ADD BUTTONS: Full width on mobile, 1/12 on tablet/desktop */}
-                            <div className="w-full md:col-span-1 flex justify-end md:justify-center md:flex-col gap-2 text-xs text-white/50 mb-1">
-                              <button
-                                onClick={() =>
-                                  removeFieldRow(card.cardId, f.rowId)
-                                }
-                                className="px-2"
-                              >
-                                ❌
-                              </button>
-                              <button
-                                onClick={() => addFieldRow(card.cardId)}
-                                className="px-2"
-                              >
-                                ➕
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-
-            {/* actions */}
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              {/* Full Width Button (Update All) */}
-              <button
-                onClick={doUpdateAll}
-                className="btn w-full sm:w-auto"
-                disabled={loading || cards.length === 0}
-              >
-                {loading ? "Updating..." : "Update All"}
-              </button>
+            {/* method selector */}
+            <div className="flex gap-2 flex-wrap">
+              {/* Regular Width Buttons */}
+              <button onClick={() => setMethod("single")} className={`py-2 px-4 rounded ${method === "single" ? "btn" : "bg-white/10"} w-auto`}>Single ID</button>
+              <button onClick={() => setMethod("comma")} className={`py-2 px-4 rounded ${method === "comma" ? "btn" : "bg-white/10"} w-auto`}>Comma-separated</button>
+              <button onClick={() => setMethod("file")} className={`py-2 px-4 rounded ${method === "file" ? "btn" : "bg-white/10"} w-auto`}>CSV / XLSX Upload</button>
             </div>
           </div>
 
+          <div className="flex gap-3 rounded mt-3">
+            <input value={base} onChange={e => setBase(e.target.value)} placeholder="Base webhook URL" className="p-2 rounded bg-white/5 w-full" />
+          </div>
 
 
+          {/* method inputs */}
+          <div className="mt-3">
+            {method === "single" && (
+              <div className="flex gap-2 flex-col sm:flex-row items-center">
+                <input value={idSingle} onChange={e => setIdSingle(e.target.value)} placeholder="Enter ID" className="p-2 rounded bg-white/5 flex-1 w-full sm:w-auto" />
+                {/* Full Width Button (Fetch) */}
+                <button onClick={fetchSingle} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
+              </div>
+            )}
 
+            {method === "comma" && (
+              <div className="flex gap-2 flex-col sm:flex-row items-center">
+                <input value={idsComma} onChange={e => setIdsComma(e.target.value)} placeholder="e.g. 12,34,56" className="p-2 rounded bg-white/5 flex-1 w-full sm:w-auto" />
+                {/* Full Width Button (Fetch) */}
+                <button onClick={fetchMultiple} className="btn w-full sm:w-auto" disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
+              </div>
+            )}
 
-          <div className="glass p-6 w-full mx-auto">
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <h4 className="font-semibold">Update Summary ({summary.length})</h4>
-              {/* Clear Summary Button - Fixed: Removed w-full from the wrapper div */}
-              <div className="flex flex-col sm:flex-row gap-2 w-auto">
-                {/* Regular Width Button (Clear Summary) */}
-                <button
-                  onClick={() => setSummary([])}
-                  className="btn w-auto"
+            {method === "file" && (
+              <div className="flex flex-wrap gap-3 items-center">
+
+                <label
+                  htmlFor="fileInput"
+                  className="px-4 py-2 bg-white/10 text-white rounded-lg cursor-pointer"
                 >
-                  Clear Summary
+                  Upload File
+                </label>
+
+                {/* HIDDEN FILE INPUT */}
+                <input
+                  type="file"
+                  id="fileInput"
+                  ref={fileRef}
+                  className="hidden"
+                  accept=".csv, .xlsx, .xls"
+                  onChange={(e) => {
+                    const f = e.target.files && e.target.files[0];
+                    if (f) {
+                      setFileName(f.name);
+                      // auto-run processing immediately when user picks the file:
+                      // give the input time to update then call fetchByFile
+                      setTimeout(() => fetchByFile(), 50);
+                    }
+                  }}
+                />
+
+
+                <span className="text-sm text-white/50" id="fileName">
+                  {fileName || "No file chosen"}
+                </span>
+
+                <button
+                  onClick={fetchByFile}
+                  className="btn w-full sm:w-auto" // Full Width Button (Fetch)
+                  disabled={loading}
+                >
+                  {loading ? "Upload & Fetch" : "Upload & Fetch"}
                 </button>
               </div>
-            </div>
+            )}
+          </div>
 
 
+          {error && <div className="text-sm text-red-400 mt-2">{error}</div>}
 
-            {/* summary */}
-            <div className="mt-6">
-
-              {summary.length === 0 ? <div className="muted">No updates yet</div> : (
-                <div className="grid gap-2 max-h-96 overflow-y-auto">
-                  {summary.map((s, idx) => (
-                    <div key={`${s.id}-${idx}`} className="p-2 rounded flex flex-col gap-1" style={{ backgroundColor: s.status === 'ok' ? 'rgba(76, 175, 80, 0.1)' : s.status === 'error' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)' }}>
-                      {/* Top Row: ID and Label (full width, side-by-side) */}
-                      <div className="flex justify-between items-start text-sm flex-wrap">
-                        <div className="font-bold">ID: {s.id}</div>
-                        <div className="text-white/70 max-w-full overflow-hidden whitespace-nowrap overflow-ellipsis">
-                          {s.fieldLabel} ({s.fieldCode})
-                        </div>
-                      </div>
-                      {/* Middle Row: Old and New Value (full width, side-by-side) */}
-                      <div className="text-xs flex justify-between gap-4">
-                        <div className="text-white/70 overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.oldValue}>
-                          <strong className="text-white/90">Old:</strong> {s.oldValue}
-                        </div>
-                        <div className="overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.newValue}>
-                          <strong className="text-white/90">New:</strong> {s.newValue}
-                        </div>
-                      </div>
-                      {/* Bottom Row: Status and Message */}
-                      <div className="text-xs mt-1">
-                        <strong className={s.status === 'ok' ? 'text-green-400' : s.status === 'error' ? 'text-red-400' : 'text-yellow-400'}>
-                          {s.status.toUpperCase()}
-                        </strong> — {String(s.msg).slice(0, 150)}{String(s.msg).length > 150 ? '...' : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* actions */}
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              {/* Full Width Button (Summary CSV) */}
-              <button
-                onClick={downloadSummaryCSV}
-                className="btn w-full sm:w-auto"
-                disabled={summary.length === 0}
-              >
-                ⤓ Summary CSV
-              </button>
-            </div>
+          {/* Template Buttons - Fixed: Removed w-full to make them normal length on small screens */}
+          <div className="flex gap-2 flex-col sm:flex-row mt-3">
+            <button onClick={downloadTemplate} className="btn w-auto">
+              <span className="text-xl">⤓</span> Template
+            </button>
+            <button
+              onClick={() => setShowCustomTemplate(true)}
+              className="btn w-auto"
+            >
+              <span className="text-xl">⤓</span> Custom Template
+            </button>
           </div>
 
         </div>
-      </div>
 
-
-
-      {
-        showCustomTemplate && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl w-full max-w-4xl text-white border border-white/20 shadow-2xl">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-bold">Select fields for template</h2>
-                <button
-                  className="text-white/70 hover:text-white text-xl"
-                  onClick={() => setShowCustomTemplate(false)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* FIELD GRID */}
-              <input
-                type="text"
-                placeholder="Search fields..."
-                className="w-full p-2 mb-3 rounded bg-white/5 border border-white/10"
-                onChange={(e) => setTemplateSearch(e.target.value.toLowerCase())}
-              />
-
-              <div className="max-h-60 overflow-auto border border-white/10 p-3 rounded grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
-                {Object.entries(fieldMap)
-                  .filter(([code, label]) =>
-                    label.toLowerCase().includes(templateSearch)
-                  )
-                  .map(([code, label]) => (
-                    <label
-                      key={code}
-                      className="flex items-center gap-2 bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTemplateFields.includes(code)}
-                        onChange={() => {
-                          if (selectedTemplateFields.includes(code)) {
-                            setSelectedTemplateFields(
-                              selectedTemplateFields.filter((c) => c !== code)
-                            );
-                          } else {
-                            setSelectedTemplateFields([
-                              ...selectedTemplateFields,
-                              code,
-                            ]);
-                          }
-                        }}
-                      />
-                      {label}
-                    </label>
-                  ))}
-              </div>
-
-              {/* BUTTONS */}
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  className="btn bg-gray-600"
-                  onClick={() => setShowCustomTemplate(false)}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  className="btn bg-purple-500"
-                  onClick={downloadCustomTemplate}
-                >
-                  Generate
-                </button>
-              </div>
+        {/* Cards area (one card per record) */}
+        <div className="glass p-6 w-full mx-auto">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="font-semibold">Records ({cards.length})</h3>
+            {/* Reset Fields Button - Fixed: Removed w-full from the wrapper div */}
+            <div className="flex flex-col sm:flex-row gap-2 w-auto">
+              {/* Regular Width Button (Reset Fields) */}
+              <button
+                onClick={() => { if (records.length) resetCardsForRecords(records); else setCards([]); }}
+                className="btn w-auto"
+              >
+                Reset Fields
+              </button>
             </div>
           </div>
-        )
-      }
 
 
-    </Layout >
-  );
+
+          {/* Cards */}
+          <div className="grid gap-3">
+            {cards.length === 0 ? (
+              <div className="muted">No records loaded. Fetch first.</div>
+            ) : (
+              cards.map((card) => {
+                const record = records.find(
+                  (r) => String(r.ID) === String(card.recordId)
+                );
+
+                return (
+                  <div key={card.cardId} className="p-3 rounded bg-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <strong>ID: {card.recordId}</strong>{" "}
+                        {card.recordLabel ? `— ${card.recordLabel}` : ""}
+                      </div>
+                      <div className="text-sm muted">
+                        Fields: {card.fields.length}
+                      </div>
+                    </div>
+
+                    {/* field rows */}
+                    <div className="grid gap-2">
+                      {card.fields.map((f) => (
+                        <div
+                          key={f.rowId}
+                          // Stacks on mobile, switches to a 12-column grid on medium (tablet/desktop) screens
+                          className="flex flex-col md:grid md:grid-cols-12 gap-2 items-start md:items-center"
+                        >
+                          {/* The main input area: Full width on mobile, 11/12 on tablet/desktop */}
+                          <div className="w-full md:col-span-11 grid grid-cols-1 md:grid-cols-12 gap-2 text-xs text-white/50 mb-1">
+
+                            {/* FIELD PICKER: Full width on mobile, 4/12 on tablet/desktop */}
+                            <div className="col-span-12 md:col-span-4">
+                              <FieldPickerInline
+                                cardId={card.cardId}
+                                rowId={f.rowId}
+                                allFields={allFields}
+                              />
+                            </div>
+
+                            {/* OLD VALUE (ENUM label support + placeholder) */}
+                            {/* Full width on mobile, 4/12 on tablet/desktop */}
+                            <div className="col-span-12 md:col-span-4 p-2 rounded bg-white/5 w-full text-white border border-white/10">
+                              {(() => {
+                                const val = enumsListMap[f.code]
+                                  ? getEnumLabel(
+                                    {
+                                      enumerations: enumsListMap[f.code],
+                                      isMultiple: f.isMultiple,
+                                    },
+                                    record ? record[f.code] : f.oldValue
+                                  )
+                                  : getOldValueForRecord(record, f.code);
+
+                                return val && String(val).trim() !== ""
+                                  ? val
+                                  : <span className="text-white/40 italic">Old Value</span>;
+                              })()}
+                            </div>
+
+
+                            {/* NEW VALUE PICKER: Full width on mobile, 4/12 on tablet/desktop */}
+                            <div className="col-span-12 md:col-span-4 flex gap-2 items-center">
+                              {fieldTypesMap[f.code] === 'user' ? (
+                                // User select dropdown
+                                <UserSelectDropdown
+                                  value={f.newValue}
+                                  onChange={(v) =>
+                                    setFieldRowNewValue(card.cardId, f.rowId, v)
+                                  }
+                                  isMultiple={f.isMultiple}
+                                />
+                              ) : enumsListMap[f.code] &&
+                                enumsListMap[f.code].length > 0 ? (
+                                f.isMultiple ? (
+                                  <MultiEnumSelect
+                                    options={enumsListMap[f.code]}
+                                    value={f.newValue || []}
+                                    onChange={(vals) =>
+                                      setFieldRowNewValue(card.cardId, f.rowId, vals)
+                                    }
+                                    placeholder="Select values"
+                                  />
+                                ) : (
+                                  /* SINGLE SELECT */
+                                  <SingleEnumSelect
+                                    options={enumsListMap[f.code]}
+                                    value={f.newValue}
+                                    onChange={(v) =>
+                                      setFieldRowNewValue(card.cardId, f.rowId, v)
+                                    }
+                                  />
+
+                                )
+                              ) : (
+                                /* NON ENUM INPUT */
+                                <input
+                                  type={getInputType(f.code)}
+                                  value={
+                                    f.code === "datetime"
+                                      ? formatDatetimeLocal(f.newValue)
+                                      : f.newValue
+                                  }
+                                  onChange={(e) =>
+                                    setFieldRowNewValue(
+                                      card.cardId,
+                                      f.rowId,
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="New value"
+                                  className="p-2 rounded bg-white/5 w-full text-white border border-white/10 italic"
+                                  {...(getInputType(f.code) === "number" && {
+                                    step: "any",
+                                  })}
+                                  disabled={!f.code}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          {/* REMOVE & ADD BUTTONS: Full width on mobile, 1/12 on tablet/desktop */}
+                          <div className="w-full md:col-span-1 flex justify-end md:justify-center md:flex-col gap-2 text-xs text-white/50 mb-1">
+                            <button
+                              onClick={() =>
+                                removeFieldRow(card.cardId, f.rowId)
+                              }
+                              className="px-2"
+                            >
+                              ❌
+                            </button>
+                            <button
+                              onClick={() => addFieldRow(card.cardId)}
+                              className="px-2"
+                            >
+                              ➕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+
+          {/* actions */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+            {/* Full Width Button (Update All) */}
+            <button
+              onClick={doUpdateAll}
+              className="btn w-full sm:w-auto"
+              disabled={loading || cards.length === 0}
+            >
+              {loading ? "Updating..." : "Update All"}
+            </button>
+          </div>
+        </div>
+
+
+
+
+
+        <div className="glass p-6 w-full mx-auto">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h4 className="font-semibold">Update Summary ({summary.length})</h4>
+            {/* Clear Summary Button - Fixed: Removed w-full from the wrapper div */}
+            <div className="flex flex-col sm:flex-row gap-2 w-auto">
+              {/* Regular Width Button (Clear Summary) */}
+              <button
+                onClick={() => setSummary([])}
+                className="btn w-auto"
+              >
+                Clear Summary
+              </button>
+            </div>
+          </div>
+
+
+
+          {/* summary */}
+          <div className="mt-6">
+
+            {summary.length === 0 ? <div className="muted">No updates yet</div> : (
+              <div className="grid gap-2 max-h-96 overflow-y-auto">
+                {summary.map((s, idx) => (
+                  <div key={`${s.id}-${idx}`} className="p-2 rounded flex flex-col gap-1" style={{ backgroundColor: s.status === 'ok' ? 'rgba(76, 175, 80, 0.1)' : s.status === 'error' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(255, 255, 255, 0.05)' }}>
+                    {/* Top Row: ID and Label (full width, side-by-side) */}
+                    <div className="flex justify-between items-start text-sm flex-wrap">
+                      <div className="font-bold">ID: {s.id}</div>
+                      <div className="text-white/70 max-w-full overflow-hidden whitespace-nowrap overflow-ellipsis">
+                        {s.fieldLabel} ({s.fieldCode})
+                      </div>
+                    </div>
+                    {/* Middle Row: Old and New Value (full width, side-by-side) */}
+                    <div className="text-xs flex justify-between gap-4">
+                      <div className="text-white/70 overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.oldValue}>
+                        <strong className="text-white/90">Old:</strong> {s.oldValue}
+                      </div>
+                      <div className="overflow-hidden whitespace-nowrap overflow-ellipsis flex-1" title={s.newValue}>
+                        <strong className="text-white/90">New:</strong> {s.newValue}
+                      </div>
+                    </div>
+                    {/* Bottom Row: Status and Message */}
+                    <div className="text-xs mt-1">
+                      <strong className={s.status === 'ok' ? 'text-green-400' : s.status === 'error' ? 'text-red-400' : 'text-yellow-400'}>
+                        {s.status.toUpperCase()}
+                      </strong> — {String(s.msg).slice(0, 150)}{String(s.msg).length > 150 ? '...' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* actions */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+            {/* Full Width Button (Summary CSV) */}
+            <button
+              onClick={downloadSummaryCSV}
+              className="btn w-full sm:w-auto"
+              disabled={summary.length === 0}
+            >
+              ⤓ Summary CSV
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+
+    {
+      showCustomTemplate && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl w-full max-w-4xl text-white border border-white/20 shadow-2xl">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold">Select fields for template</h2>
+              <button
+                className="text-white/70 hover:text-white text-xl"
+                onClick={() => setShowCustomTemplate(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* FIELD GRID */}
+            <input
+              type="text"
+              placeholder="Search fields..."
+              className="w-full p-2 mb-3 rounded bg-white/5 border border-white/10"
+              onChange={(e) => setTemplateSearch(e.target.value.toLowerCase())}
+            />
+
+            <div className="max-h-60 overflow-auto border border-white/10 p-3 rounded grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-gray-300/10">
+              {Object.entries(fieldMap)
+                .filter(([code, label]) =>
+                  label.toLowerCase().includes(templateSearch)
+                )
+                .map(([code, label]) => (
+                  <label
+                    key={code}
+                    className="flex items-center gap-2 bg-white/5 p-2 rounded cursor-pointer hover:bg-white/10"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTemplateFields.includes(code)}
+                      onChange={() => {
+                        if (selectedTemplateFields.includes(code)) {
+                          setSelectedTemplateFields(
+                            selectedTemplateFields.filter((c) => c !== code)
+                          );
+                        } else {
+                          setSelectedTemplateFields([
+                            ...selectedTemplateFields,
+                            code,
+                          ]);
+                        }
+                      }}
+                    />
+                    {label}
+                  </label>
+                ))}
+            </div>
+
+            {/* BUTTONS */}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                className="btn bg-gray-600"
+                onClick={() => setShowCustomTemplate(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="btn bg-purple-500"
+                onClick={downloadCustomTemplate}
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+
+  </Layout >
+);
 }
