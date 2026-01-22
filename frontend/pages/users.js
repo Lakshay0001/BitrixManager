@@ -137,13 +137,15 @@ export default function UsersPage() {
                 {/* Top Glass: Base + Fetch */}
                 <div className="glass p-4 flex flex-col gap-4 items-start">
                     <div className="flex flex-col md:flex-row gap-3 flex-1 w-full">
-                        <input
-                            value={isMasked ? maskInput(base) : base} // Show masked or raw input based on state
-                            onChange={e => setBase(e.target.value)}
-                            placeholder="Webhook URL / Token"
-                            className="p-2 rounded bg-white/5 border border-white/20 flex-1 w-full"
-                        />
-                        <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                        <div className="flex flex-row gap-3 w-full">
+                <input
+                  value={isMasked ? maskInput(base) : base}
+                  onChange={e => setBase(e.target.value)}
+                  placeholder="Base webhook URL"
+                  className="p-2 rounded bg-white/5 w-full"
+                />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
                     </div>
                         <button
