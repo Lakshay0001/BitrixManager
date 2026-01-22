@@ -4,6 +4,7 @@ import { WebhookContext } from "../context/WebhookContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
 import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 
 
@@ -74,6 +75,12 @@ export default function UpdatePage() {
 
   const [usersList, setUsersList] = useState([]);
   const [usersMap, setUsersMap] = useState({});
+
+      const [isMasked, setIsMasked] = useState(true); // State to control visibility
+  
+      const toggleMask = () => {
+          setIsMasked(!isMasked); // Toggle the masking visibility
+      };
 
 
   // load webhook
@@ -1378,6 +1385,17 @@ function FieldPickerInline({ cardId, rowId, allFields }) {
   );
 }
 
+    const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
 
 
 // Render (keeps your earlier layout)
@@ -1411,7 +1429,8 @@ return (
           </div>
 
           <div className="flex gap-3 rounded mt-3">
-            <input value={base} onChange={e => setBase(e.target.value)} placeholder="Base webhook URL" className="p-2 rounded bg-white/5 w-full" />
+            <input value={isMasked ? maskInput(base) : base} onChange={e => setBase(e.target.value)} placeholder="Base webhook URL" className="p-2 rounded bg-white/5 w-full" />
+            <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
           </div>
 
 

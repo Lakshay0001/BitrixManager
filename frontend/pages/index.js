@@ -2,11 +2,17 @@ import { useContext, useState } from "react";
 import { WebhookContext } from "../context/WebhookContext";
 import { useRouter } from "next/router";
 import Layout from "../components/Layout";
+// import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 export default function Home() {
   const { webhook, setWebhook } = useContext(WebhookContext);
   const [input, setInput] = useState(webhook || "");
   const router = useRouter();
+      // const [isMasked, setIsMasked] = useState(true); // State to control visibility
+  
+      // const toggleMask = () => {
+      //     setIsMasked(!isMasked); // Toggle the masking visibility
+      // };
 
   const saveWebhook = () => {
     if (!input.trim()) {
@@ -33,6 +39,17 @@ export default function Home() {
     router.push(path);
   };
 
+      const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
   return (
     <Layout>
       {/* 🟢 FIXED: 'justify-center' removed to stop vertical centering. 
@@ -48,10 +65,11 @@ export default function Home() {
           <input
             type="text"
             placeholder="Enter your Base Webhook URL"
-            value={input}
+            value={maskInput(input)}
             onChange={(e) => setInput(e.target.value)}
             className="w-full p-3 rounded-lg bg-black/30 border border-white/20 text-white mb-4"
           />
+          {/* <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} /> */}
 
           {/* Buttons: stack on mobile (flex-col), row on small screens and up (sm:flex-row) */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6"> 

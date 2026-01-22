@@ -5,6 +5,8 @@ import { WebhookContext } from "../context/WebhookContext";
 import ExpandableCard from "../components/ExpandableCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
+import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from "@/components/ui/ShowHideTokenButton";
 
 // =================================================================
 // 1. UTILITY FUNCTIONS (Added/Consolidated)
@@ -129,6 +131,12 @@ export default function ManagePage() {
 
   // Loading spinner message
   const [loadingMessage, setLoadingMessage] = useState('Loading...');
+
+      const [isMasked, setIsMasked] = useState(true); // State to control visibility
+
+    const toggleMask = () => {
+        setIsMasked(!isMasked); // Toggle the masking visibility
+    };
 
   // ---- Load webhook ----
   useEffect(() => {
@@ -1157,6 +1165,17 @@ export default function ManagePage() {
     );
   };
 
+      const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
 
   // =================================================================
   // 6. JSX RENDER (Main Component Return)
@@ -1173,17 +1192,17 @@ export default function ManagePage() {
             <h3 className="font-semibold mb-3">List Records</h3>
 
             {/* Base URL Input */}
-            <div className="mb-3">
-              <input
-                type="text"
-                value={base}
-                onChange={(e) => setBase(e.target.value)}
-                placeholder="Enter base webhook URL"
-                className="p-2 rounded w-full bg-white/5"
-              />
-            </div>
+            <div className="flex flex-row gap-3 w-full">
+                <input
+                  value={isMasked ? maskInput(base) : base}
+                  onChange={e => setBase(e.target.value)}
+                  placeholder="Base webhook URL"
+                  className="p-2 rounded bg-white/5 w-full"
+                />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
-            <div className="flex flex-row gap-2 mb-3">
+            <div className="flex flex-row gap-2 my-3">
               <button
                 onClick={() => handleEntityChange("lead")}
                 className={`py-2 px-4 rounded ${entity === "lead" ? "btn" : "bg-white/10"}`}

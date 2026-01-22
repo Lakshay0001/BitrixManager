@@ -6,6 +6,7 @@ import ExpandableCard from "../components/ExpandableCard";
 import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
 import LoadingButton from "../components/LoadingButton";
 import LoadingSpinner from "../components/LoadingSpinner";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 
 // Utility function to format labels (e.g., SOURCE_ID -> Source Id)
@@ -37,6 +38,12 @@ export default function GetPage() {
   // field mapping loaded from backend
   const [fieldMap, setFieldMap] = useState({}); // code -> label
   const [enumsMap, setEnumsMap] = useState({}); // code -> {enum_id: enum_value}
+
+      const [isMasked, setIsMasked] = useState(true); // State to control visibility
+  
+      const toggleMask = () => {
+          setIsMasked(!isMasked); // Toggle the masking visibility
+      };
 
   // Load webhook from context/localStorage
   useEffect(() => {
@@ -234,6 +241,17 @@ export default function GetPage() {
 
   const tableRef = useRef();
 
+      const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
   return (
     <Layout>
       {loading && <LoadingSpinner
@@ -296,12 +314,15 @@ export default function GetPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <input
-                value={base}
-                onChange={(e) => setBase(e.target.value)}
-                placeholder="Base webhook URL"
-                className="p-2 rounded bg-white/5 w-full"
-              />
+              <div className="flex flex-row gap-3 w-full">
+                <input
+                  value={isMasked ? maskInput(base) : base}
+                  onChange={e => setBase(e.target.value)}
+                  placeholder="Base webhook URL"
+                  className="p-2 rounded bg-white/5 w-full"
+                />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
               {/* 3. Single Fetch: Stack on mobile (flex-col), side-by-side on tablet/desktop (sm:flex-row) */}
               {method === "single" && (

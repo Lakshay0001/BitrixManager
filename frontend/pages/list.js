@@ -5,6 +5,7 @@ import ExpandableCard from "../components/ExpandableCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
 import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 
 // Utility: format Date → YYYY-MM-DD
@@ -54,6 +55,12 @@ export default function ListPage() {
     lead: ['ID', 'TITLE', 'NAME', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE', 'ASSIGNED_BY_ID'],
     deal: ['ID', 'TITLE', 'NAME', 'CONTACT_ID', 'SOURCE_ID', 'PHONE_VALUE', 'PHONE_TYPE', 'EMAIL_VALUE', 'EMAIL_TYPE', 'ASSIGNED_BY_ID'],
   };
+
+      const [isMasked, setIsMasked] = useState(true); // State to control visibility
+  
+      const toggleMask = () => {
+          setIsMasked(!isMasked); // Toggle the masking visibility
+      };
 
   // Initialize Dates
   useEffect(() => {
@@ -181,6 +188,17 @@ export default function ListPage() {
     link.click();
   };
 
+      const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
 
   return (
     <>
@@ -211,12 +229,15 @@ export default function ListPage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <div className="flex flex-row gap-3 w-full">
                 <input
-                  value={base}
+                  value={isMasked ? maskInput(base) : base}
                   onChange={e => setBase(e.target.value)}
                   placeholder="Base webhook URL"
-                  className="p-2 mb-3 rounded bg-white/5"
+                  className="p-2 rounded bg-white/5 w-full"
                 />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
                 {/* 🟢 Responsive Date/Fetch Section */}
                 <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center sm:justify-between">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
 import { buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 export default function UsersPage() {
     const { webhook } = useContext(WebhookContext);
@@ -12,6 +13,11 @@ export default function UsersPage() {
     const [viewMode, setViewMode] = useState("card"); // default card view
     const [filter, setFilter] = useState("active"); // all or active
     const [counts, setCounts] = useState({ all: 0, active: 0 });
+    const [isMasked, setIsMasked] = useState(true); // State to control visibility
+
+    const toggleMask = () => {
+        setIsMasked(!isMasked); // Toggle the masking visibility
+    };
 
 
     // Load webhook
@@ -111,6 +117,18 @@ export default function UsersPage() {
         link.click();
     };
 
+    // Mask input function as you provided
+    const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
     return (
         <Layout>
             <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -120,11 +138,14 @@ export default function UsersPage() {
                 <div className="glass p-4 flex flex-col gap-4 items-start">
                     <div className="flex flex-col md:flex-row gap-3 flex-1 w-full">
                         <input
-                            value={base}
+                            value={isMasked ? maskInput(base) : base} // Show masked or raw input based on state
                             onChange={e => setBase(e.target.value)}
                             placeholder="Webhook URL / Token"
                             className="p-2 rounded bg-white/5 border border-white/20 flex-1 w-full"
                         />
+                        <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+
+                    </div>
                         <button
                             onClick={() => {
                                 fetchUsers(search);
@@ -134,7 +155,6 @@ export default function UsersPage() {
                         >
                             {loading ? "Loading..." : "Fetch Users"}
                         </button>
-                    </div>
 
                 </div>
 
@@ -247,11 +267,11 @@ export default function UsersPage() {
                                 <div key={u.id} className="glass p-4 flex flex-col rounded-lg shadow-md hover:scale-105 transition-transform duration-200">
                                     <div className="flex flex-row mb-4">
                                         <div className="w-1/3">
-                                        {u.photo ? (
-                                            <img src={u.photo} alt={u.name} className="w-16 h-16 md:w-20 md:h-20 rounded-full mb-2" />
-                                        ) : (
-                                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-700 mb-2 flex items-center justify-center text-gray-400"></div>
-                                        )}
+                                            {u.photo ? (
+                                                <img src={u.photo} alt={u.name} className="w-16 h-16 md:w-20 md:h-20 rounded-full mb-2" />
+                                            ) : (
+                                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gray-700 mb-2 flex items-center justify-center text-gray-400"></div>
+                                            )}
                                         </div>
                                         <div className="w-2/3">
                                             <h2 className="font-bold text-lg text-white mb-2">{u.name} {u.last_name}</h2>

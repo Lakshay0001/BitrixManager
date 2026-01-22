@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import Layout from "../components/Layout";
 import { WebhookContext } from "../context/WebhookContext";
 import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 
 export default function FieldsPage() {
@@ -21,6 +22,12 @@ export default function FieldsPage() {
     const [showModal, setShowModal] = useState(false);
     const [pendingDeleteIds, setPendingDeleteIds] = useState([]);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+        const [isMasked, setIsMasked] = useState(true); // State to control visibility
+
+    const toggleMask = () => {
+        setIsMasked(!isMasked); // Toggle the masking visibility
+    };
 
     // Load webhook
     useEffect(() => {
@@ -155,6 +162,17 @@ export default function FieldsPage() {
         }
     };
 
+        const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
 
     return (
         <Layout>
@@ -179,14 +197,17 @@ export default function FieldsPage() {
                         </button>
                     </div>
 
-                    <input
-                        value={base}
-                        onChange={(e) => setBase(e.target.value)}
-                        placeholder="Webhook URL"
-                        className="p-2 rounded bg-white/5 w-full mb-3"
-                    />
+                    <div className="flex flex-row gap-3 w-full">
+                <input
+                  value={isMasked ? maskInput(base) : base}
+                  onChange={e => setBase(e.target.value)}
+                  placeholder="Base webhook URL"
+                  className="p-2 rounded bg-white/5 w-full"
+                />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
-                    <button onClick={fetchFields} className="btn w-full sm:w-auto">
+                    <button onClick={fetchFields} className="btn w-full sm:w-auto mt-3">
                         {loading ? "Loading..." : "Fetch Fields"}
                     </button>
                 </div>

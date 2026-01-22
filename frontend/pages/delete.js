@@ -6,6 +6,7 @@ import ExpandableCard from "../components/ExpandableCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import LoadingButton from "../components/LoadingButton";
 import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
 
 
 // Utility function to format labels (e.g., SOURCE_ID -> Source Id)
@@ -66,6 +67,12 @@ export default function DeletePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const [pendingDeleteIds, setPendingDeleteIds] = useState([]);
+
+      const [isMasked, setIsMasked] = useState(true); // State to control visibility
+
+    const toggleMask = () => {
+        setIsMasked(!isMasked); // Toggle the masking visibility
+    };
 
 
 
@@ -400,6 +407,17 @@ export default function DeletePage() {
   // Render
   const tableRef = useRef();
 
+      const maskInput = (input) => {
+        if (input.length <= 13) {
+            return input;
+        }
+
+        const maskedPart = '*'.repeat(12);
+        const visiblePart = input.slice(0, -13) + maskedPart + input.slice(-1);
+
+        return visiblePart;
+    };
+
   return (
     <Layout>
       {loading && <LoadingSpinner message="Processing delete..." />}
@@ -428,7 +446,15 @@ export default function DeletePage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <input value={base} onChange={e => setBase(e.target.value)} placeholder="Base webhook URL" className="p-2 rounded bg-white/5 w-full" />
+              <div className="flex flex-row gap-3 w-full">
+                <input
+                  value={isMasked ? maskInput(base) : base}
+                  onChange={e => setBase(e.target.value)}
+                  placeholder="Base webhook URL"
+                  className="p-2 rounded bg-white/5 w-full"
+                />
+                <ShowHideTokenButton isMasked={isMasked} toggleMask={toggleMask} />
+                </div>
 
               {/* Single Fetch: Stack on mobile, side-by-side on tablet/desktop */}
               {method === "single" && (
