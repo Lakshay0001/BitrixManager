@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
-import Layout from "../components/Layout";
-import { WebhookContext } from "../context/WebhookContext";
-import { buildUrl as apiBuildUrl } from "../lib/api";
-import ShowHideTokenButton from '../components/ui/ShowHideTokenButton'; // Import the button
+import Layout from "../../components/Layout";
+import { WebhookContext } from "../../context/WebhookContext";
+import { buildUrl as apiBuildUrl } from "../../lib/api";
+import ShowHideTokenButton from '../../components/ui/ShowHideTokenButton'; // Import the button
 
 export default function UsersPage() {
     const { webhook } = useContext(WebhookContext);

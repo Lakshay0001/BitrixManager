@@ -1,11 +1,11 @@
 // frontend/pages/list-get-update.js
 import { useState, useEffect, useContext, useRef } from "react";
-import Layout from "../components/Layout";
-import { WebhookContext } from "../context/WebhookContext";
-import ExpandableCard from "../components/ExpandableCard";
-import LoadingSpinner from "../components/LoadingSpinner";
-import LoadingButton from "../components/LoadingButton";
-import { API_BASE, buildUrl as apiBuildUrl } from "../lib/api";
+import Layout from "../../components/Layout";
+import { WebhookContext } from "../../context/WebhookContext";
+import ExpandableCard from "../../components/ExpandableCard";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import LoadingButton from "../../components/LoadingButton";
+import { API_BASE, buildUrl as apiBuildUrl } from "../../lib/api";
 import ShowHideTokenButton from "@/components/ui/ShowHideTokenButton";
 
 // =================================================================
