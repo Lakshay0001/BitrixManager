@@ -158,15 +158,16 @@ export default function ManagePage() {
     fetch(apiBuildUrl(`/fields/${entity}`, { base }))
       .then(r => r.json())
       .then(j => {
-        const opts = Object.entries(j.code_to_label || {})
+        const result = j.result || j; // Handle both wrapped and direct responses
+        const opts = Object.entries(result.code_to_label || {})
           .map(([code, label]) => ({ code, label }));
 
-        const types = j.code_to_type || {};
-        const rawEnums = j.enums || {};
+        const types = result.code_to_type || {};
+        const rawEnums = result.enums || {};
         const { dict: enumsDict, list: enumsList } = normalizeEnums(rawEnums);
 
         setAllFields(opts);
-        setFieldMap(j.code_to_label || {});
+        setFieldMap(result.code_to_label || {});
         setFieldTypesMap(types);
         setEnumsMap(enumsDict);
         setEnumsListMap(enumsList);

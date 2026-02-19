@@ -1,6 +1,10 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
+
+# Add parent directory to path to support running as script
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # --------------------------------------------------
 # APP INIT
@@ -32,7 +36,6 @@ API_PREFIX = ""
 # --------------------------------------------------
 # IMPORT ROUTERS
 # --------------------------------------------------
-# Use absolute imports for Render deployment compatibility
 from backend.get import router as get_router
 from backend.list import router as list_router
 from backend.fields import router as fields_router
