@@ -155,7 +155,7 @@ export default function ManagePage() {
     setSelectedFields([]);
     setListRows([]); // Clear list on entity change
 
-    fetch(`http://127.0.0.1:8000/fields/${entity}?base=${encodeURIComponent(base)}`)
+    fetch(apiBuildUrl(`/fields/${entity}`, { base }))
       .then(r => r.json())
       .then(j => {
         const opts = Object.entries(j.code_to_label || {})
@@ -192,11 +192,6 @@ export default function ManagePage() {
   // =================================================================
 
   // ---- Utility functions (Cont.) ----
-  const buildUrl = (path, qs = {}) => {
-    const u = new URL(path, "http://127.0.0.1:8000");
-    Object.entries(qs).forEach(([k, v]) => { if (v) u.searchParams.set(k, v); });
-    return u.toString();
-  };
 
   // Helper: Determine the correct HTML input type
   const getInputType = (code) => {
@@ -417,7 +412,7 @@ export default function ManagePage() {
         qs.to_modified = filterDateTo;
       }
 
-      const url = buildUrl(`/list/${entity}`, qs);
+      const url = apiBuildUrl(`/list/${entity}`, qs);
       console.log("🚩 List Fetch URL:", url);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -442,7 +437,7 @@ export default function ManagePage() {
     setGetLoading(true);
     setLoadingMessage("Fetching record details...");
     try {
-      const url = buildUrl("/get/single", { entity, item_id: row.ID, base });
+      const url = apiBuildUrl("/get/single", { entity, item_id: row.ID, base });
       console.log("🚩 Single Item Fetch URL:", url);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -479,7 +474,7 @@ export default function ManagePage() {
       const detailedResults = [];
 
       for (const id of ids) {
-        const url = buildUrl("/get/single", { entity, item_id: id, base });
+        const url = apiBuildUrl("/get/single", { entity, item_id: id, base });
 
         const res = await fetch(url);
         if (res.ok) {
@@ -538,7 +533,7 @@ export default function ManagePage() {
     setGetLoading(true);
 
     try {
-      const url = buildUrl("/get/single", {
+      const url = apiBuildUrl("/get/single", {
         entity,
         item_id: row.ID,
         base,
@@ -695,7 +690,7 @@ export default function ManagePage() {
         }
 
         // Use path-style update URL to match backend route
-        const url = buildUrl(`/update/${entity}/${encodeURIComponent(card.recordId)}`, { base });
+        const url = apiBuildUrl(`/update/${entity}/${encodeURIComponent(card.recordId)}`, { base });
 
         const res = await fetch(url, {
           method: "POST",
@@ -1027,7 +1022,7 @@ export default function ManagePage() {
       useEffect(() => {
         if (allUsers.length === 0 && !userLoading) {
           setUserLoading(true);
-          fetch(`http://127.0.0.1:8000/users?base=${encodeURIComponent(base)}`)
+          fetch(apiBuildUrl("/users", { base }))
             .then(r => r.json())
             .then(j => {
               setAllUsers((j.result || []).map(u => ({ ID: String(u.ID), VALUE: u.NAME || u.LOGIN })));
